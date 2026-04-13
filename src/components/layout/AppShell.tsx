@@ -121,6 +121,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
             )}
+            {user && (
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="rounded-lg px-2 py-1 text-sm text-[var(--muted)] hover:text-[var(--foreground)] sm:hidden"
+              >
+                Log out
+              </button>
+            )}
           </div>
         </div>
         <div className="flex gap-1 border-t border-black/5 px-4 py-2 sm:hidden dark:border-white/10">
