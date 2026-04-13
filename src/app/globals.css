@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+/* Class-based dark mode (toggle) — works with `dark` on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --muted: #64748b;
+  --accent: #4f46e5;
+  --ring: rgba(79, 70, 229, 0.35);
+  --hero-surface: linear-gradient(135deg, rgb(255 255 255 / 0.95) 0%, rgb(238 242 255 / 0.85) 48%, rgb(255 255 255 / 0.92) 100%);
+  --hero-border: rgb(79 70 229 / 0.12);
+  --hero-accent: #6366f1;
+  --memories-surface: linear-gradient(160deg, rgb(255 253 250) 0%, rgb(255 255 255 / 0.98) 55%, rgb(250 245 255 / 0.5) 100%);
+  --memories-border: rgb(168 85 247 / 0.14);
+  --memories-heading: #7c3aed;
+  --app-shell-tint-from: rgb(238 242 255 / 0.65);
+  --app-shell-tint-via: rgb(248 250 252 / 0.4);
+}
+
+.dark {
+  --background: #0b1120;
+  --foreground: #f1f5f9;
+  --card: #111827;
+  --muted: #94a3b8;
+  --accent: #818cf8;
+  --ring: rgba(129, 140, 248, 0.45);
+  --hero-surface: linear-gradient(135deg, rgb(17 24 39 / 0.95) 0%, rgb(30 27 75 / 0.55) 50%, rgb(17 24 39 / 0.92) 100%);
+  --hero-border: rgb(129 140 248 / 0.2);
+  --hero-accent: #a5b4fc;
+  --memories-surface: linear-gradient(165deg, rgb(46 16 101 / 0.35) 0%, rgb(17 24 39 / 0.92) 45%, rgb(17 24 39 / 0.98) 100%);
+  --memories-border: rgb(167 139 250 / 0.22);
+  --memories-heading: #c4b5fd;
+  --app-shell-tint-from: rgb(30 27 75 / 0.35);
+  --app-shell-tint-via: rgb(11 17 32 / 0.5);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Per-area accent inside <main> only (header keeps root tokens). */
+main.section-dashboard {
+  --accent: #4f46e5;
+}
+.dark main.section-dashboard {
+  --accent: #818cf8;
+}
+main.section-family {
+  --accent: #0d9488;
+}
+.dark main.section-family {
+  --accent: #2dd4bf;
+}
+main.section-profile {
+  --accent: #db2777;
+}
+.dark main.section-profile {
+  --accent: #f472b6;
+}
+main.section-chat {
+  --accent: #0891b2;
+}
+.dark main.section-chat {
+  --accent: #22d3ee;
+}
+main.section-admin {
+  --accent: #d97706;
+}
+.dark main.section-admin {
+  --accent: #fbbf24;
+}
+
+body {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -30%, rgb(99 102 241 / 0.12), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgb(168 85 247 / 0.06), transparent 45%);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.dark body {
+  background-image:
+    radial-gradient(ellipse 100% 70% at 50% -25%, rgb(99 102 241 / 0.18), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgb(139 92 246 / 0.1), transparent 40%);
+}
+
+/* Dashboard welcome card */
+.dashboard-hero {
+  background: var(--hero-surface);
+  border-color: var(--hero-border);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06) inset,
+    0 12px 40px -20px rgb(79 70 229 / 0.25);
+}
+
+.dark .dashboard-hero {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.04) inset,
+    0 16px 48px -24px rgb(0 0 0 / 0.5);
+}
+
+.memories-strip {
+  background: var(--memories-surface);
+}
+
+/* Subtle stagger for member cards (grid is .member-grid) */
+.member-grid > * {
+  animation: member-rise 0.45s ease backwards;
+}
+
+.member-grid > *:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.member-grid > *:nth-child(2) {
+  animation-delay: 0.05s;
+}
+.member-grid > *:nth-child(3) {
+  animation-delay: 0.08s;
+}
+.member-grid > *:nth-child(4) {
+  animation-delay: 0.11s;
+}
+.member-grid > *:nth-child(5) {
+  animation-delay: 0.14s;
+}
+.member-grid > *:nth-child(6) {
+  animation-delay: 0.17s;
+}
+.member-grid > *:nth-child(7) {
+  animation-delay: 0.2s;
+}
+.member-grid > *:nth-child(8) {
+  animation-delay: 0.23s;
+}
+
+@keyframes member-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-grid > * {
+    animation: none;
+  }
+}
+
+/* Login / marketing shell */
+.auth-page {
+  background-image:
+    radial-gradient(ellipse 90% 60% at 50% -20%, rgb(99 102 241 / 0.2), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, rgb(236 72 153 / 0.08), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgb(59 130 246 / 0.1), transparent 50%);
+}
+
+.dark .auth-page {
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -15%, rgb(99 102 241 / 0.22), transparent 50%),
+    radial-gradient(ellipse 45% 35% at 0% 100%, rgb(192 132 252 / 0.12), transparent 45%),
+    radial-gradient(ellipse 45% 35% at 100% 100%, rgb(56 189 248 / 0.08), transparent 45%);
+}
+
+.auth-panel {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.08) inset,
+    0 24px 60px -28px rgb(79 70 229 / 0.35);
+}
+
+.dark .auth-panel {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06) inset,
+    0 28px 70px -30px rgb(0 0 0 / 0.65);
+}
+
+/* Admin area: subtle grid + accent ring (used with .admin-console on the page) */
+.admin-console {
+  position: relative;
+  border-radius: 1.25rem;
+  border: 1px solid rgb(245 158 11 / 0.22);
+  background-image:
+    linear-gradient(160deg, rgb(254 243 199 / 0.35) 0%, transparent 42%),
+    linear-gradient(rgb(0 0 0 / 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(0 0 0 / 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 24px 24px, 24px 24px;
+  box-shadow:
+    0 0 0 1px rgb(245 158 11 / 0.06),
+    0 18px 50px -24px rgb(180 83 9 / 0.35);
+}
+
+.dark .admin-console {
+  border-color: rgb(251 191 36 / 0.2);
+  background-image:
+    linear-gradient(165deg, rgb(120 53 15 / 0.45) 0%, transparent 45%),
+    linear-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 24px 24px, 24px 24px;
+  box-shadow:
+    0 0 0 1px rgb(251 191 36 / 0.08),
+    0 20px 60px -28px rgb(0 0 0 / 0.55);
+}
