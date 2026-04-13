@@ -21,6 +21,7 @@ export const API_ROUTES = {
   chat: {
     settings: "/api/chat/settings",
     messages: "/api/chat/messages",
+    presence: "/api/chat/presence",
   },
   admin: {
     users: "/api/admin/users",

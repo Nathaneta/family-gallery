@@ -17,6 +17,7 @@ type ChatMsg = {
 };
 
 type Channel = "family" | "dm";
+type PresenceInfo = { online: boolean; typing: boolean; lastSeenAt: string | null };
 
 const fetchOpts: RequestInit = { credentials: "include", cache: "no-store" };
 
@@ -31,9 +32,12 @@ export default function ChatPage() {
   const [channel, setChannel] = useState<Channel>("family");
   const [peerId, setPeerId] = useState<string>("");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [presence, setPresence] = useState<Record<string, PresenceInfo>>({});
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const typingSentRef = useRef(false);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadSettings = useCallback(() => {
     fetch(API_ROUTES.chat.settings, fetchOpts)
@@ -77,6 +81,42 @@ export default function ChatPage() {
       .catch(() => {});
   }, [user, channel, peerId, authLoading, loadSettings]);
 
+  const loadPresence = useCallback(() => {
+    if (authLoading || !user) return;
+    const p = new URLSearchParams();
+    p.set("channel", channel);
+    if (channel === "dm" && peerId) p.set("peerId", peerId);
+    p.set("_", String(Date.now()));
+    fetch(`${API_ROUTES.chat.presence}?${p}`, fetchOpts)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setPresence(d?.presence ?? {}))
+      .catch(() => {});
+  }, [authLoading, user, channel, peerId]);
+
+  const sendPresence = useCallback(
+    async (opts?: { heartbeat?: boolean; typing?: boolean }) => {
+      if (!user) return;
+      const body: Record<string, unknown> = {
+        heartbeat: !!opts?.heartbeat,
+        channel,
+      };
+      if (channel === "dm" && peerId) body.peerUserId = peerId;
+      if (opts?.typing !== undefined) body.typing = opts.typing;
+      try {
+        await fetch(API_ROUTES.chat.presence, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          cache: "no-store",
+          body: JSON.stringify(body),
+        });
+      } catch {
+        /* ignore transient presence failures */
+      }
+    },
+    [user, channel, peerId]
+  );
+
   useEffect(() => {
     loadSettings();
     loadMembers();
@@ -84,16 +124,43 @@ export default function ChatPage() {
 
   useEffect(() => {
     loadMessages();
-  }, [loadMessages]);
+    loadPresence();
+  }, [loadMessages, loadPresence]);
 
   useEffect(() => {
-    const t = setInterval(loadMessages, 2500);
+    const t = setInterval(() => {
+      loadMessages();
+      loadPresence();
+    }, 2500);
     return () => clearInterval(t);
-  }, [loadMessages]);
+  }, [loadMessages, loadPresence]);
+
+  useEffect(() => {
+    if (!user) return;
+    sendPresence({ heartbeat: true });
+    const t = setInterval(() => {
+      sendPresence({ heartbeat: true });
+    }, 15_000);
+    return () => clearInterval(t);
+  }, [user, sendPresence]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    typingSentRef.current = false;
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+  }, [channel, peerId]);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    };
+  }, []);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -120,7 +187,14 @@ export default function ChatPage() {
         throw new Error(err.error || "Could not send");
       }
       setDraft("");
+      typingSentRef.current = false;
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+      sendPresence({ typing: false });
       loadMessages();
+      loadPresence();
     } catch (err) {
       notify(err instanceof Error ? err.message : "Could not send");
     } finally {
@@ -131,6 +205,18 @@ export default function ChatPage() {
   const others = members.filter((m) => m.id !== user?.id);
   const canFamily = settings?.familyChatEnabled !== false;
   const canDm = settings?.directMessagesEnabled !== false;
+  const activePeer = others.find((x) => x.id === peerId) ?? null;
+  const onlineCount = others.filter((m) => presence[m.id]?.online).length;
+  const typingText =
+    channel === "family"
+      ? others
+          .filter((m) => presence[m.id]?.typing)
+          .slice(0, 2)
+          .map((m) => m.name)
+          .join(", ")
+      : activePeer && presence[activePeer.id]?.typing
+        ? `${activePeer.name} is typing…`
+        : "";
 
   return (
     <div className="chat-layout flex min-h-[calc(100vh-8rem)] flex-col gap-4 lg:flex-row">
@@ -158,6 +244,7 @@ export default function ChatPage() {
               👨‍👩‍👧‍👦
             </span>
             Family room
+            <span className="ml-auto text-[10px] font-medium opacity-80">{onlineCount} online</span>
           </button>
 
           <p className="pt-2 text-xs font-bold uppercase tracking-wider text-cyan-800/80 dark:text-cyan-200/80">
@@ -194,8 +281,18 @@ export default function ChatPage() {
                           m.avatarUrl.startsWith("data:")
                         }
                       />
+                      <span
+                        className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-[var(--card)] ${
+                          presence[m.id]?.online ? "bg-emerald-500" : "bg-zinc-400"
+                        }`}
+                      />
                     </span>
-                    <span className="truncate">{m.name}</span>
+                    <span className="min-w-0 flex-1 truncate">{m.name}</span>
+                    {presence[m.id]?.typing ? (
+                      <span className="text-[10px] font-medium text-cyan-700 dark:text-cyan-300">
+                        typing…
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               ))}
@@ -214,7 +311,15 @@ export default function ChatPage() {
                 : "Pick someone"}
           </h2>
           <p className="text-xs text-[var(--muted)]">
-            Messages refresh every few seconds. Only your family (signed-in) can see this.
+            {typingText
+              ? channel === "family"
+                ? `${typingText}${others.filter((m) => presence[m.id]?.typing).length > 2 ? " and others" : ""} typing…`
+                : typingText
+              : channel === "dm" && activePeer
+                ? presence[activePeer.id]?.online
+                  ? `${activePeer.name} is online`
+                  : `${activePeer.name} is offline`
+                : "Messages refresh every few seconds. Only your family (signed-in) can see this."}
           </p>
         </header>
 
@@ -266,7 +371,21 @@ export default function ChatPage() {
           <div className="flex gap-2">
             <input
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setDraft(next);
+                if (sending || (channel === "dm" && !peerId)) return;
+                const shouldType = next.trim().length > 0;
+                if (shouldType && !typingSentRef.current) {
+                  typingSentRef.current = true;
+                  sendPresence({ typing: true });
+                }
+                if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+                typingTimerRef.current = setTimeout(() => {
+                  typingSentRef.current = false;
+                  sendPresence({ typing: false });
+                }, shouldType ? 1800 : 0);
+              }}
               placeholder={
                 channel === "dm" && !peerId
                   ? "Choose someone in the sidebar…"
