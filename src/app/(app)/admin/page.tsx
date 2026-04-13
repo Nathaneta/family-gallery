@@ -6,6 +6,8 @@ import Image from "next/image";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { UploadModal } from "@/components/gallery/UploadModal";
+import { Lightbox } from "@/components/gallery/Lightbox";
+import { MemoriesStrip } from "@/components/dashboard/MemoriesStrip";
 import { FAMILY_CATEGORIES } from "@/utils/constants";
 import type { AlbumPublic, PhotoPublic } from "@/shared/api-types";
 import { API_ROUTES } from "@/lib/api-endpoints";
@@ -85,6 +87,10 @@ export default function AdminPage() {
   const [editMediaCategory, setEditMediaCategory] = useState("");
   const [editMediaAlbumId, setEditMediaAlbumId] = useState("");
   const [editMediaAlbums, setEditMediaAlbums] = useState<AlbumPublic[]>([]);
+  const [memoryLightbox, setMemoryLightbox] = useState<{
+    photos: PhotoPublic[];
+    current: PhotoPublic;
+  } | null>(null);
 
   const loadMembers = useCallback(() => {
     fetch("/api/admin/users", { credentials: "include" })
@@ -425,6 +431,19 @@ export default function AdminPage() {
             >
               Open /api/health
             </a>
+          </section>
+          <section className="rounded-2xl border border-amber-200/50 bg-[var(--card)] p-6 dark:border-amber-500/20">
+            <h2 className="text-lg font-semibold text-stone-900 dark:text-amber-50">
+              On this day (admin pin)
+            </h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Pinned memories panel visible only in admin.
+            </p>
+            <div className="mt-4">
+              <MemoriesStrip
+                onOpenMemory={(p, all) => setMemoryLightbox({ current: p, photos: all })}
+              />
+            </div>
           </section>
           <section className="rounded-2xl border border-dashed border-amber-300/60 p-6 dark:border-amber-500/30">
             <h2 className="font-semibold text-stone-900 dark:text-amber-50">Quick paths</h2>
@@ -1116,6 +1135,12 @@ export default function AdminPage() {
           </form>
         </div>
       ) : null}
+      <Lightbox
+        photo={memoryLightbox?.current ?? null}
+        photos={memoryLightbox?.photos}
+        onNavigate={(p) => setMemoryLightbox((s) => (s ? { ...s, current: p } : null))}
+        onClose={() => setMemoryLightbox(null)}
+      />
     </div>
   );
 }

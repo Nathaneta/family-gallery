@@ -2,22 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { MemberCard } from "@/components/members/MemberCard";
-import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
-import { MemoriesStrip } from "@/components/dashboard/MemoriesStrip";
 import { FamilySpotlight } from "@/components/dashboard/FamilySpotlight";
 import { UploadModal } from "@/components/gallery/UploadModal";
-import { Lightbox } from "@/components/gallery/Lightbox";
 import { useAuth } from "@/components/providers/AuthProvider";
-import type { PhotoPublic, UserPublic } from "@/shared/api-types";
+import type { UserPublic } from "@/shared/api-types";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [members, setMembers] = useState<UserPublic[]>([]);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [memoryLightbox, setMemoryLightbox] = useState<{
-    photos: PhotoPublic[];
-    current: PhotoPublic;
-  } | null>(null);
 
   const load = useCallback(() => {
     fetch("/api/users", { credentials: "include" })
@@ -65,13 +58,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <MemoriesStrip
-        onOpenMemory={(p, all) => setMemoryLightbox({ current: p, photos: all })}
-      />
-
       <FamilySpotlight />
-
-      <ActivityFeed />
 
       <h2 className="mb-4 text-lg font-semibold">Family members</h2>
       <div className="member-grid grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -89,15 +76,6 @@ export default function DashboardPage() {
           onUploaded={load}
         />
       )}
-
-      <Lightbox
-        photo={memoryLightbox?.current ?? null}
-        photos={memoryLightbox?.photos}
-        onNavigate={(p) =>
-          setMemoryLightbox((s) => (s ? { ...s, current: p } : null))
-        }
-        onClose={() => setMemoryLightbox(null)}
-      />
     </div>
   );
 }
