@@ -615,7 +615,9 @@ export default function AdminPage() {
                               fill
                               className="object-cover"
                               sizes="32px"
-                              unoptimized={m.avatarUrl.startsWith("http")}
+                              unoptimized={
+                                m.avatarUrl.startsWith("http") || m.avatarUrl.startsWith("data:")
+                              }
                             />
                           </div>
                           {m.name}

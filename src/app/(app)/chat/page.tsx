@@ -188,7 +188,11 @@ export default function ChatPage() {
                         fill
                         className="object-cover"
                         sizes="32px"
-                        unoptimized={m.avatarUrl.startsWith("http") || m.avatarUrl.startsWith("/uploads")}
+                        unoptimized={
+                          m.avatarUrl.startsWith("http") ||
+                          m.avatarUrl.startsWith("/uploads") ||
+                          m.avatarUrl.startsWith("data:")
+                        }
                       />
                     </span>
                     <span className="truncate">{m.name}</span>

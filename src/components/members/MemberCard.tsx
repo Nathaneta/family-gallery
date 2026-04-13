@@ -33,7 +33,7 @@ export function MemberCard({ member }: { member: UserPublic }) {
             fill
             className="object-cover transition duration-300 group-hover:scale-105"
             sizes="96px"
-            unoptimized={member.avatarUrl.startsWith("http")}
+            unoptimized={member.avatarUrl.startsWith("http") || member.avatarUrl.startsWith("data:")}
           />
         </div>
         <div>

@@ -112,7 +112,7 @@ function ProfileBody({ userId }: { userId: string }) {
             fill
             className="object-cover"
             sizes="112px"
-            unoptimized={profile.avatarUrl.startsWith("http")}
+            unoptimized={profile.avatarUrl.startsWith("http") || profile.avatarUrl.startsWith("data:")}
           />
         </div>
         <div className="flex-1">

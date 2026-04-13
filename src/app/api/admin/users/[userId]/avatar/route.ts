@@ -47,11 +47,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ userId: st
   const id = randomUUID();
   const filename = `${id}${ext}`;
   const dir = path.join(process.cwd(), "public", "uploads", "avatars");
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, filename), buf);
+  let avatarUrl: string;
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, filename), buf);
+    avatarUrl = `/uploads/avatars/${filename}`;
+  } catch {
+    // Vercel's filesystem is read-only at runtime; fall back to DB-stored data URL.
+    avatarUrl = `data:${mime};base64,${buf.toString("base64")}`;
+  }
 
-  const publicPath = `/uploads/avatars/${filename}`;
-  target.avatarUrl = publicPath;
+  target.avatarUrl = avatarUrl;
   await target.save();
 
   return NextResponse.json({
