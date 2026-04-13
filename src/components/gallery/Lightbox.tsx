@@ -126,7 +126,7 @@ export function Lightbox({ photo, onClose, photos, onNavigate }: Props) {
               width={1600}
               height={1200}
               className="max-h-[85vh] w-auto max-w-full rounded-xl object-contain shadow-2xl ring-1 ring-white/10"
-              unoptimized={photo.publicPath.startsWith("/uploads")}
+              unoptimized={photo.publicPath.startsWith("/uploads") || photo.publicPath.startsWith("data:")}
             />
           )}
         </div>

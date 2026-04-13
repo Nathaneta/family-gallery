@@ -22,6 +22,7 @@ const MIME_RULES = new Map<string, MimeRule>([
   ["video/quicktime", { mediaType: "video", ext: ".mov", maxBytes: 120 * 1024 * 1024 }],
   ["application/pdf", { mediaType: "file", ext: ".pdf", maxBytes: 40 * 1024 * 1024 }],
 ]);
+const MAX_INLINE_BYTES = 4 * 1024 * 1024;
 
 function isFamilyCategory(c: string): c is FamilyCategory {
   return (FAMILY_CATEGORIES as readonly string[]).includes(c);
@@ -212,11 +213,25 @@ export async function POST(req: NextRequest) {
   const id = randomUUID();
   const filename = `${id}${rule.ext}`;
   const uploadDir = path.join(process.cwd(), "public", "uploads", "media");
-  await mkdir(uploadDir, { recursive: true });
-  const fsPath = path.join(uploadDir, filename);
-  await writeFile(fsPath, buf);
-
-  const publicPath = `/uploads/media/${filename}`;
+  let publicPath: string;
+  try {
+    await mkdir(uploadDir, { recursive: true });
+    const fsPath = path.join(uploadDir, filename);
+    await writeFile(fsPath, buf);
+    publicPath = `/uploads/media/${filename}`;
+  } catch {
+    // Vercel runtime file system is read-only; keep smaller assets inline in MongoDB.
+    if (buf.length > MAX_INLINE_BYTES) {
+      return NextResponse.json(
+        {
+          error:
+            "Upload failed on this deployment for larger files. Please upload up to 4 MB or configure cloud storage (S3/Cloudinary).",
+        },
+        { status: 413 }
+      );
+    }
+    publicPath = `data:${mime};base64,${buf.toString("base64")}`;
+  }
   const origName =
     typeof (file as File).name === "string" ? String((file as File).name).slice(0, 500) : "";
 

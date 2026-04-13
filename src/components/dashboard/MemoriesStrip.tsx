@@ -120,7 +120,7 @@ export function MemoriesStrip({ onOpenMemory }: Props) {
                       fill
                       className="object-cover transition duration-300 group-hover:scale-105"
                       sizes="112px"
-                      unoptimized={p.publicPath.startsWith("/uploads")}
+                      unoptimized={p.publicPath.startsWith("/uploads") || p.publicPath.startsWith("data:")}
                     />
                   )}
                   <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">

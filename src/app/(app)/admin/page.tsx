@@ -818,7 +818,7 @@ export default function AdminPage() {
                           fill
                           className="object-cover"
                           sizes="56px"
-                          unoptimized={p.publicPath.startsWith("/uploads")}
+                          unoptimized={p.publicPath.startsWith("/uploads") || p.publicPath.startsWith("data:")}
                         />
                       )}
                     </div>

@@ -44,7 +44,7 @@ export function FamilySpotlight() {
             fill
             className="object-cover"
             sizes="220px"
-            unoptimized={photo.publicPath.startsWith("/uploads")}
+            unoptimized={photo.publicPath.startsWith("/uploads") || photo.publicPath.startsWith("data:")}
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col justify-center">

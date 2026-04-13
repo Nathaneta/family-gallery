@@ -54,7 +54,7 @@ export function PhotoGrid({ photos, onSelect }: Props) {
                 fill
                 className="object-cover transition duration-300 group-hover:scale-105"
                 sizes="(max-width: 640px) 50vw, 25vw"
-                unoptimized={p.publicPath.startsWith("/uploads")}
+                unoptimized={p.publicPath.startsWith("/uploads") || p.publicPath.startsWith("data:")}
               />
             )}
             {p.caption ? (
