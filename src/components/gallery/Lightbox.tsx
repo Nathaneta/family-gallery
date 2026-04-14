@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { useToast } from "@/components/providers/ToastProvider";
 import type { PhotoPublic } from "@/shared/api-types";
 
 type Props = {
@@ -12,15 +14,53 @@ type Props = {
   onNavigate?: (photo: PhotoPublic) => void;
 };
 
+type CommentItem = {
+  id: string;
+  userId: string;
+  userName: string;
+  body: string;
+  createdAt: string;
+  mine: boolean;
+};
+
+const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"] as const;
+
 export function Lightbox({ photo, onClose, photos, onNavigate }: Props) {
+  const { user } = useAuth();
+  const { notify } = useToast();
   const index = useMemo(() => {
     if (!photo || !photos?.length) return -1;
     return photos.findIndex((p) => p.id === photo.id);
   }, [photo, photos]);
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentBusy, setCommentBusy] = useState(false);
+  const [reactions, setReactions] = useState<Record<string, number>>({});
+  const [mine, setMine] = useState<Record<string, boolean>>({});
+  const [reactionBusy, setReactionBusy] = useState(false);
 
   const canNav = index >= 0 && !!photos?.length && !!onNavigate;
   const hasPrev = canNav && index > 0;
   const hasNext = canNav && index < photos!.length - 1;
+
+  async function loadSocial() {
+    if (!photo) return;
+    try {
+      const [cRes, rRes] = await Promise.all([
+        fetch(`/api/photos/${photo.id}/comments`, { credentials: "include", cache: "no-store" }),
+        fetch(`/api/photos/${photo.id}/reactions`, { credentials: "include", cache: "no-store" }),
+      ]);
+      const cData = await cRes.json().catch(() => ({}));
+      const rData = await rRes.json().catch(() => ({}));
+      if (cRes.ok) setComments(cData.comments ?? []);
+      if (rRes.ok) {
+        setReactions(rData.summary ?? {});
+        setMine(rData.mine ?? {});
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     if (!photo) return;
@@ -53,6 +93,13 @@ export function Lightbox({ photo, onClose, photos, onNavigate }: Props) {
       document.body.style.overflow = "";
     };
   }, [photo, onClose, photos, onNavigate]);
+
+  useEffect(() => {
+    if (!photo) return;
+    loadSocial();
+    const t = setInterval(loadSocial, 10000);
+    return () => clearInterval(t);
+  }, [photo?.id]);
 
   if (!photo) return null;
 
@@ -158,6 +205,112 @@ export function Lightbox({ photo, onClose, photos, onNavigate }: Props) {
               {index + 1} / {photos!.length} · use arrow keys
             </p>
           ) : null}
+
+          <div className="mt-4 border-t border-white/10 pt-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/70">Reactions</p>
+            <div className="flex flex-wrap gap-2">
+              {REACTIONS.map((emoji) => {
+                const count = reactions[emoji] ?? 0;
+                return (
+                  <button
+                    key={emoji}
+                    type="button"
+                    disabled={reactionBusy}
+                    onClick={async () => {
+                      if (!user) return;
+                      setReactionBusy(true);
+                      try {
+                        const res = await fetch(`/api/photos/${photo.id}/reactions`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          cache: "no-store",
+                          body: JSON.stringify({ emoji }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(data.error || "Could not react");
+                        setReactions(data.summary ?? {});
+                        setMine(data.mine ?? {});
+                      } catch (err) {
+                        notify(err instanceof Error ? err.message : "Could not react");
+                      } finally {
+                        setReactionBusy(false);
+                      }
+                    }}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                      mine[emoji]
+                        ? "border-cyan-300 bg-cyan-500/20 text-cyan-100"
+                        : "border-white/20 bg-white/10 text-white hover:bg-white/15"
+                    }`}
+                  >
+                    <span>{emoji}</span>
+                    <span className="ml-1">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-4 border-t border-white/10 pt-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/70">Comments</p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const body = commentDraft.trim();
+                if (!body || commentBusy) return;
+                setCommentBusy(true);
+                try {
+                  const res = await fetch(`/api/photos/${photo.id}/comments`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    cache: "no-store",
+                    body: JSON.stringify({ body }),
+                  });
+                  const data = await res.json().catch(() => ({}));
+                  if (!res.ok) throw new Error(data.error || "Could not comment");
+                  setCommentDraft("");
+                  await loadSocial();
+                } catch (err) {
+                  notify(err instanceof Error ? err.message : "Could not comment");
+                } finally {
+                  setCommentBusy(false);
+                }
+              }}
+              className="mb-3 flex gap-2"
+            >
+              <input
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Write a comment…"
+                className="min-w-0 flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/55"
+              />
+              <button
+                type="submit"
+                disabled={!commentDraft.trim() || commentBusy}
+                className="rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-stone-950 disabled:opacity-50"
+              >
+                Send
+              </button>
+            </form>
+            <ul className="max-h-40 space-y-2 overflow-y-auto pr-1">
+              {comments.length === 0 ? (
+                <li className="text-xs text-white/55">No comments yet.</li>
+              ) : (
+                comments.map((c) => (
+                  <li key={c.id} className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
+                    <p className="text-[11px] font-semibold text-white/80">
+                      {c.mine ? "You" : c.userName}
+                    </p>
+                    <p className="mt-0.5 text-sm text-white">{c.body}</p>
+                    <p className="mt-1 text-[10px] text-white/50">
+                      {new Date(c.createdAt).toLocaleString()}
+                    </p>
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
         </div>
       </div>
     </div>
