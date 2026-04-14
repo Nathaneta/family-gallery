@@ -205,6 +205,33 @@ export function Lightbox({ photo, onClose, photos, onNavigate }: Props) {
               {index + 1} / {photos!.length} · use arrow keys
             </p>
           ) : null}
+          {user && !photo.hidden ? (
+            <div className="mt-3">
+              <button
+                type="button"
+                className="rounded-lg border border-rose-300/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 hover:bg-rose-500/20"
+                onClick={async () => {
+                  const reason = window.prompt("Why are you reporting this media?")?.trim() ?? "";
+                  if (!reason) return;
+                  try {
+                    const res = await fetch(`/api/photos/${photo.id}/report`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({ reason }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Could not submit report");
+                    notify("Report sent to admins.");
+                  } catch (err) {
+                    notify(err instanceof Error ? err.message : "Could not submit report");
+                  }
+                }}
+              >
+                Report this media
+              </button>
+            </div>
+          ) : null}
 
           <div className="mt-4 border-t border-white/10 pt-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/70">Reactions</p>

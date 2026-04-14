@@ -26,6 +26,9 @@ export type PhotoPublic = {
   mimeType: string;
   originalFilename: string;
   createdAt: string;
+  hidden?: boolean;
+  hiddenReason?: string;
+  reportCount?: number;
 };
 
 export type AlbumPublic = {

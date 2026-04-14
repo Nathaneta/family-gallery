@@ -84,6 +84,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ photoId: 
     photo.albumId = nextAlbum ? new mongoose.Types.ObjectId(nextAlbum) : null;
   }
 
+  if (isAdmin && body.hidden !== undefined) {
+    const hide = Boolean(body.hidden);
+    photo.hidden = hide;
+    photo.hiddenReason = hide ? String(body.hiddenReason ?? "").slice(0, 300) : "";
+    photo.hiddenBy = hide ? user?._id ?? null : null;
+  }
+
   await photo.save();
 
   return NextResponse.json({
@@ -99,6 +106,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ photoId: 
       mediaType: photo.mediaType,
       mimeType: photo.mimeType,
       originalFilename: photo.originalFilename,
+      hidden: !!photo.hidden,
+      hiddenReason: photo.hiddenReason ?? "",
       createdAt: photo.createdAt.toISOString(),
     },
   });

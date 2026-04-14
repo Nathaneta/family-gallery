@@ -914,6 +914,7 @@ export default function AdminPage() {
                 <th className="p-3">Gallery</th>
                 <th className="p-3">Caption</th>
                 <th className="p-3">By</th>
+                <th className="p-3">Flags</th>
                 <th className="p-3" />
               </tr>
             </thead>
@@ -942,7 +943,49 @@ export default function AdminPage() {
                   <td className="p-3 text-[var(--muted)]">{p.galleryType}</td>
                   <td className="p-3 max-w-[200px] truncate">{p.caption || "—"}</td>
                   <td className="p-3 text-[var(--muted)]">{p.uploaderName ?? "—"}</td>
+                  <td className="p-3 text-xs">
+                    {p.hidden ? (
+                      <span className="rounded bg-rose-500/15 px-2 py-1 text-rose-700 dark:text-rose-300">
+                        Hidden
+                      </span>
+                    ) : (
+                      <span className="text-[var(--muted)]">Visible</span>
+                    )}
+                    {typeof p.reportCount === "number" && p.reportCount > 0 ? (
+                      <span className="ml-2 rounded bg-amber-500/15 px-2 py-1 text-amber-800 dark:text-amber-300">
+                        {p.reportCount} reports
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="p-3 text-right">
+                    <button
+                      type="button"
+                      className="mr-3 font-medium text-rose-700 dark:text-rose-300"
+                      onClick={async () => {
+                        const reason =
+                          p.hidden
+                            ? ""
+                            : window.prompt("Reason for hiding this media (optional)")?.trim() ?? "";
+                        const res = await fetch(`/api/photos/${p.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({
+                            hidden: !p.hidden,
+                            hiddenReason: reason,
+                          }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          notify(data.error || "Could not update visibility");
+                          return;
+                        }
+                        notify(p.hidden ? "Media unhidden." : "Media hidden.");
+                        loadMedia();
+                      }}
+                    >
+                      {p.hidden ? "Unhide" : "Hide"}
+                    </button>
                     <button
                       type="button"
                       className="mr-3 font-medium text-amber-700 dark:text-amber-300"

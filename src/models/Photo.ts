@@ -21,6 +21,9 @@ export interface IPhoto {
   mediaType: MediaType;
   mimeType: string;
   originalFilename: string;
+  hidden: boolean;
+  hiddenReason: string;
+  hiddenBy: mongoose.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +44,9 @@ const PhotoSchema = new Schema<IPhoto>(
     mediaType: { type: String, enum: ["image", "video", "file"], default: "image" },
     mimeType: { type: String, default: "application/octet-stream" },
     originalFilename: { type: String, default: "" },
+    hidden: { type: Boolean, default: false, index: true },
+    hiddenReason: { type: String, default: "" },
+    hiddenBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
   },
   { timestamps: true }
 );

@@ -42,6 +42,8 @@ function mapPhoto(p: {
   mediaType?: string;
   mimeType?: string;
   originalFilename?: string;
+  hidden?: boolean;
+  hiddenReason?: string;
   createdAt: Date;
 }): {
   id: string;
@@ -56,6 +58,8 @@ function mapPhoto(p: {
   mimeType: string;
   originalFilename: string;
   createdAt: string;
+  hidden: boolean;
+  hiddenReason: string;
 } {
   return {
     id: p._id.toString(),
@@ -70,6 +74,8 @@ function mapPhoto(p: {
     mimeType: p.mimeType || "",
     originalFilename: p.originalFilename || "",
     createdAt: p.createdAt.toISOString(),
+    hidden: !!p.hidden,
+    hiddenReason: p.hiddenReason || "",
   };
 }
 
@@ -90,6 +96,8 @@ export async function GET(req: NextRequest) {
   const q = searchParams.get("q")?.trim();
 
   await connectDB();
+  const viewer = await User.findById(session.sub).select("isAdmin").lean();
+  const isAdminViewer = !!viewer?.isAdmin;
 
   const filter: Record<string, unknown> = {};
 
@@ -116,6 +124,9 @@ export async function GET(req: NextRequest) {
       { publicPath: { $regex: q, $options: "i" } },
       { originalFilename: { $regex: q, $options: "i" } },
     ];
+  }
+  if (!isAdminViewer) {
+    filter.hidden = { $ne: true };
   }
 
   let photos = await Photo.find(filter).sort({ createdAt: -1 }).limit(200).lean();
