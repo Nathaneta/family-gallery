@@ -35,6 +35,7 @@ export default function ChatPage() {
   const [presence, setPresence] = useState<Record<string, PresenceInfo>>({});
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [membersLoading, setMembersLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingSentRef = useRef(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -49,11 +50,25 @@ export default function ChatPage() {
   }, []);
 
   const loadMembers = useCallback(() => {
+    if (!user) return;
+    setMembersLoading(true);
     fetch(API_ROUTES.users, fetchOpts)
-      .then((r) => r.json())
-      .then((d) => setMembers(d.users ?? []))
-      .catch(() => setMembers([]));
-  }, []);
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("members fetch failed"))))
+      .then((d) => {
+        setMembers(d.users ?? []);
+        setMembersLoading(false);
+      })
+      .catch(() => {
+        // One quick retry helps when first request races cold start/session restore.
+        setTimeout(() => {
+          fetch(API_ROUTES.users, fetchOpts)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => setMembers(d?.users ?? []))
+            .catch(() => setMembers([]))
+            .finally(() => setMembersLoading(false));
+        }, 350);
+      });
+  }, [user]);
 
   const loadMessages = useCallback(() => {
     if (authLoading || !user) return;
@@ -118,9 +133,10 @@ export default function ChatPage() {
   );
 
   useEffect(() => {
+    if (authLoading || !user) return;
     loadSettings();
     loadMembers();
-  }, [loadSettings, loadMembers]);
+  }, [authLoading, user, loadSettings, loadMembers]);
 
   useEffect(() => {
     loadMessages();
@@ -252,6 +268,10 @@ export default function ChatPage() {
           </p>
           {!canDm ? (
             <p className="text-xs text-[var(--muted)]">Direct messages are disabled by an admin.</p>
+          ) : membersLoading ? (
+            <p className="text-xs text-[var(--muted)]">Loading members…</p>
+          ) : others.length === 0 ? (
+            <p className="text-xs text-[var(--muted)]">No other members found yet.</p>
           ) : (
             <ul className="max-h-48 space-y-1 overflow-y-auto lg:max-h-[min(24rem,50vh)]">
               {others.map((m) => (
