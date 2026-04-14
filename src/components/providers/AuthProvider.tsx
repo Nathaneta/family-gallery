@@ -17,8 +17,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
-    const data = await res.json();
+    const res = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
     setUser(data.user ?? null);
   }, []);
 
@@ -26,8 +26,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/auth/me", { credentials: "include" });
-        const data = await res.json();
+        let data: { user?: UserPublic | null } = {};
+        try {
+          const res = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
+          data = await res.json().catch(() => ({}));
+        } catch {
+          // Cold starts can fail once; quick retry improves first-load reliability.
+          await new Promise((r) => setTimeout(r, 350));
+          const res2 = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
+          data = await res2.json().catch(() => ({}));
+        }
         if (!cancelled) setUser(data.user ?? null);
       } finally {
         if (!cancelled) setLoading(false);

@@ -33,8 +33,7 @@ export function PushNotificationsSetup() {
         const keyData = await keyRes.json().catch(() => ({}));
         if (!keyRes.ok || !keyData?.enabled || !keyData?.publicKey) return;
 
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") return;
+        if (Notification.permission !== "granted") return;
 
         let sub = await reg.pushManager.getSubscription();
         if (!sub) {

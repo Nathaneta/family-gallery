@@ -10,18 +10,25 @@ import type { UserPublic } from "@/shared/api-types";
 export default function DashboardPage() {
   const { user } = useAuth();
   const [members, setMembers] = useState<UserPublic[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  const load = useCallback(() => {
-    fetch("/api/users", { credentials: "include" })
+  const load = useCallback((showLoading = true) => {
+    if (showLoading) setMembersLoading(true);
+    fetch("/api/users", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setMembers(d.users ?? []))
-      .catch(() => setMembers([]));
+      .catch(() => setMembers([]))
+      .finally(() => setMembersLoading(false));
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    fetch("/api/users", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setMembers(d.users ?? []))
+      .catch(() => setMembers([]))
+      .finally(() => setMembersLoading(false));
+  }, []);
 
   const firstName = user?.name?.split(/\s+/)[0] ?? "";
 
@@ -62,9 +69,14 @@ export default function DashboardPage() {
 
       <h2 className="mb-4 text-lg font-semibold">Family members</h2>
       <div className="member-grid grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {members.map((m) => (
-          <MemberCard key={m.id} member={m} />
-        ))}
+        {membersLoading
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={`member-skeleton-${i}`}
+                className="h-36 animate-pulse rounded-2xl border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5"
+              />
+            ))
+          : members.map((m) => <MemberCard key={m.id} member={m} />)}
       </div>
 
       {user && (

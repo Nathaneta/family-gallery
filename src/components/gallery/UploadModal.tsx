@@ -81,33 +81,48 @@ export function UploadModal({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const file = inputRef.current?.files?.[0];
-    if (!file) {
-      notify("Choose a file first.");
+    const files = inputRef.current?.files ? Array.from(inputRef.current.files) : [];
+    if (files.length === 0) {
+      notify("Choose at least one file.");
       return;
     }
     setBusy(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("galleryType", mode);
-      fd.append("caption", caption);
-      if (mode === "family") fd.append("category", category);
-      if (mode === "personal") fd.append("ownerUserId", effectivePersonalOwner);
-      if (albumId) fd.append("albumId", albumId);
+      let uploaded = 0;
+      const failed: string[] = [];
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("galleryType", mode);
+        fd.append("caption", caption);
+        if (mode === "family") fd.append("category", category);
+        if (mode === "personal") fd.append("ownerUserId", effectivePersonalOwner);
+        if (albumId) fd.append("albumId", albumId);
 
-      const res = await fetch("/api/photos", { method: "POST", body: fd, credentials: "include" });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Upload failed");
+        const res = await fetch("/api/photos", { method: "POST", body: fd, credentials: "include" });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          failed.push(err.error || file.name || "Upload failed");
+          continue;
+        }
+        uploaded += 1;
       }
-      notify(
-        mode === "family"
-          ? "Added to the family gallery!"
-          : showMemberPicker
-            ? "Added to the selected member's gallery."
-            : "Added to your gallery."
-      );
+      if (uploaded === 0) {
+        throw new Error(failed[0] || "Upload failed");
+      }
+      if (failed.length === 0) {
+        notify(
+          uploaded === 1
+            ? mode === "family"
+              ? "Added to the family gallery!"
+              : showMemberPicker
+                ? "Added to the selected member's gallery."
+                : "Added to your gallery."
+            : `${uploaded} files uploaded successfully.`
+        );
+      } else {
+        notify(`${uploaded} uploaded, ${failed.length} failed. First error: ${failed[0]}`);
+      }
       setCaption("");
       setAlbumId("");
       if (inputRef.current) inputRef.current.value = "";
@@ -155,10 +170,11 @@ export function UploadModal({
               : ""}
           </div>
         ) : null}
-        <label className="mb-3 block text-sm font-medium">File</label>
+        <label className="mb-3 block text-sm font-medium">Files (you can choose multiple)</label>
         <input
           ref={inputRef}
           type="file"
+          multiple
           accept="image/*,video/mp4,video/webm,video/quicktime,.pdf,application/pdf"
           className="mb-4 w-full text-sm"
         />
