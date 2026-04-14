@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -69,6 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileHintHidden, setMobileHintHidden] = useState(() =>
     typeof window === "undefined" ? false : window.localStorage.getItem("fg-mobile-hint-hidden") === "1"
   );
+  const [compactMobileHeader, setCompactMobileHeader] = useState(false);
   const nav = navLinks(!!user?.isAdmin);
   const onAdminRoute = pathname.startsWith("/admin");
 
@@ -81,6 +82,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         : pathname.startsWith("/chat")
           ? "section-chat"
           : "section-dashboard";
+
+  useEffect(() => {
+    const onScroll = () => {
+      setCompactMobileHeader(window.scrollY > 24);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <div
@@ -97,11 +107,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             : "border-black/5 bg-[var(--card)]/90 dark:border-white/10"
         }`}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <div
+          className={`mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 transition-all ${
+            compactMobileHeader ? "py-2 sm:py-3" : "py-3"
+          }`}
+        >
           <div className="flex items-center gap-6">
             <Link
               href="/dashboard"
-              className="text-lg font-semibold tracking-tight transition hover:text-[var(--accent)]"
+              className={`font-semibold tracking-tight transition hover:text-[var(--accent)] ${
+                compactMobileHeader ? "text-base sm:text-lg" : "text-lg"
+              }`}
             >
               <span className="bg-gradient-to-r from-[var(--accent)] to-violet-500 bg-clip-text text-transparent dark:from-indigo-300 dark:to-violet-300">
                 Family Gallery
@@ -150,13 +166,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </div>
-        <div className="flex gap-1 border-t border-black/5 px-4 py-2 sm:hidden dark:border-white/10">
+        <div
+          className={`flex gap-1 border-t border-black/5 px-4 py-2 transition-all sm:hidden dark:border-white/10 ${
+            compactMobileHeader ? "max-h-0 overflow-hidden py-0 opacity-0" : "max-h-24 opacity-100"
+          }`}
+        >
           {nav.map((n) => (
             <NavLink key={n.href} {...n} />
           ))}
         </div>
       </header>
       <main
+        key={pathname}
         className={`mx-auto max-w-6xl px-4 py-8 pb-24 sm:pb-16 ${sectionClass}`}
         data-section={sectionClass.replace("section-", "")}
       >
