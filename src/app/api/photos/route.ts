@@ -10,6 +10,7 @@ import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 import type { FamilyCategory, MediaType } from "@/models/Photo";
 import { FAMILY_CATEGORIES } from "@/utils/constants";
 import { sendPushToAll } from "@/lib/web-push";
+import { canAccessAlbum } from "@/lib/album-access";
 
 type MimeRule = { mediaType: MediaType; ext: string; maxBytes: number };
 
@@ -117,7 +118,20 @@ export async function GET(req: NextRequest) {
     ];
   }
 
-  const photos = await Photo.find(filter).sort({ createdAt: -1 }).limit(200).lean();
+  let photos = await Photo.find(filter).sort({ createdAt: -1 }).limit(200).lean();
+  const albumIds = [...new Set(photos.map((p) => p.albumId?.toString()).filter(Boolean))] as string[];
+  if (albumIds.length > 0) {
+    const albumRows = await Album.find({ _id: { $in: albumIds } })
+      .select("scope ownerUserId visibility allowedUserIds")
+      .lean();
+    const albumMap = new Map(albumRows.map((a) => [a._id.toString(), a]));
+    photos = photos.filter((p) => {
+      if (!p.albumId) return true;
+      const album = albumMap.get(p.albumId.toString());
+      if (!album) return true;
+      return canAccessAlbum(album, session.sub);
+    });
+  }
   const uploaderIds = [...new Set(photos.map((p) => p.uploadedBy.toString()))];
   const uploaders = await User.find({ _id: { $in: uploaderIds } })
     .select("name")
@@ -193,6 +207,9 @@ export async function POST(req: NextRequest) {
       if (album.scope !== "personal" || album.ownerUserId?.toString() !== ownerUserId) {
         return NextResponse.json({ error: "That folder does not belong to this gallery" }, { status: 400 });
       }
+    }
+    if (!canAccessAlbum(album, session.sub)) {
+      return NextResponse.json({ error: "You do not have access to that folder" }, { status: 403 });
     }
     albumObjectId = album._id;
   }

@@ -31,6 +31,9 @@ function ProfileBody({ userId }: { userId: string }) {
   const [albumFilter, setAlbumFilter] = useState("");
   const [avatarUrlDraft, setAvatarUrlDraft] = useState("");
   const [avatarSaving, setAvatarSaving] = useState(false);
+  const [sessions, setSessions] = useState<
+    { sid: string; userAgent: string; ip: string; lastSeenAt: string; createdAt: string; current: boolean }[]
+  >([]);
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
@@ -86,6 +89,14 @@ function ProfileBody({ userId }: { userId: string }) {
   useEffect(() => {
     if (profile?.avatarUrl) setAvatarUrlDraft(profile.avatarUrl);
   }, [profile?.avatarUrl]);
+
+  useEffect(() => {
+    if (!isSelf) return;
+    fetch("/api/auth/sessions", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setSessions(d.sessions ?? []))
+      .catch(() => setSessions([]));
+  }, [isSelf]);
 
   const isSelf = current?.id === userId;
   const canEditAvatar = !!current && (isSelf || !!current.isAdmin);
@@ -208,6 +219,78 @@ function ProfileBody({ userId }: { userId: string }) {
           </label>
         ) : null}
       </div>
+
+      {isSelf ? (
+        <section className="mb-6 rounded-xl border border-black/10 p-4 dark:border-white/15">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">My devices</h2>
+            <button
+              type="button"
+              className="rounded-lg border border-black/10 px-3 py-1.5 text-xs dark:border-white/15"
+              onClick={async () => {
+                const res = await fetch("/api/auth/sessions", {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({ revokeOthers: true }),
+                });
+                if (!res.ok) {
+                  notify("Could not sign out other devices.");
+                  return;
+                }
+                notify("Signed out other devices.");
+                setSessions((prev) => prev.filter((s) => s.current));
+              }}
+            >
+              Sign out other devices
+            </button>
+          </div>
+          <ul className="mt-3 space-y-2">
+            {sessions.length === 0 ? (
+              <li className="text-sm text-[var(--muted)]">No active sessions found.</li>
+            ) : (
+              sessions.map((s) => (
+                <li
+                  key={s.sid}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-black/5 p-2.5 text-sm dark:border-white/10"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate">{s.userAgent || "Unknown device"}</p>
+                    <p className="text-xs text-[var(--muted)]">
+                      Last seen: {new Date(s.lastSeenAt).toLocaleString()}
+                    </p>
+                  </div>
+                  {s.current ? (
+                    <span className="rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                      Current
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rounded-md border border-black/10 px-2 py-1 text-xs dark:border-white/15"
+                      onClick={async () => {
+                        const res = await fetch("/api/auth/sessions", {
+                          method: "DELETE",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({ sid: s.sid }),
+                        });
+                        if (!res.ok) {
+                          notify("Could not revoke this device.");
+                          return;
+                        }
+                        setSessions((prev) => prev.filter((x) => x.sid !== s.sid));
+                      }}
+                    >
+                      Revoke
+                    </button>
+                  )}
+                </li>
+              ))
+            )}
+          </ul>
+        </section>
+      ) : null}
 
       <PhotoGrid photos={photos} onSelect={setSelected} />
       <Lightbox

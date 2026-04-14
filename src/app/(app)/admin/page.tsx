@@ -28,6 +28,8 @@ type AdminAlbum = {
   description: string;
   scope: "family" | "personal";
   ownerUserId: string | null;
+  visibility: "all" | "restricted";
+  allowedUserIds: string[];
 };
 
 export default function AdminPage() {
@@ -73,6 +75,8 @@ export default function AdminPage() {
     description: "",
     scope: "family" as "family" | "personal",
     ownerUserId: "",
+    visibility: "all" as "all" | "restricted",
+    allowedUserIds: [] as string[],
   });
 
   const [editingMember, setEditingMember] = useState<AdminUser | null>(null);
@@ -81,6 +85,8 @@ export default function AdminPage() {
   const [editingAlbum, setEditingAlbum] = useState<AdminAlbum | null>(null);
   const [editAlbumName, setEditAlbumName] = useState("");
   const [editAlbumDescription, setEditAlbumDescription] = useState("");
+  const [editAlbumVisibility, setEditAlbumVisibility] = useState<"all" | "restricted">("all");
+  const [editAlbumAllowedUserIds, setEditAlbumAllowedUserIds] = useState<string[]>([]);
 
   const [editingMedia, setEditingMedia] = useState<PhotoPublic | null>(null);
   const [editMediaCaption, setEditMediaCaption] = useState("");
@@ -231,6 +237,8 @@ export default function AdminPage() {
         description: newAlbum.description,
         scope: newAlbum.scope,
         ownerUserId: newAlbum.scope === "personal" ? newAlbum.ownerUserId : null,
+        visibility: newAlbum.visibility,
+        allowedUserIds: newAlbum.allowedUserIds,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -239,7 +247,14 @@ export default function AdminPage() {
       return;
     }
     notify("Folder created.");
-    setNewAlbum({ name: "", description: "", scope: "family", ownerUserId: "" });
+    setNewAlbum({
+      name: "",
+      description: "",
+      scope: "family",
+      ownerUserId: "",
+      visibility: "all",
+      allowedUserIds: [],
+    });
     loadAlbums();
   }
 
@@ -297,7 +312,12 @@ export default function AdminPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ name: editAlbumName, description: editAlbumDescription }),
+      body: JSON.stringify({
+        name: editAlbumName,
+        description: editAlbumDescription,
+        visibility: editAlbumVisibility,
+        allowedUserIds: editAlbumAllowedUserIds,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -306,6 +326,7 @@ export default function AdminPage() {
     }
     notify("Folder updated.");
     setEditingAlbum(null);
+    setEditAlbumAllowedUserIds([]);
     loadAlbums();
   }
 
@@ -722,6 +743,46 @@ export default function AdminPage() {
                 className="sm:col-span-2 rounded-lg border border-black/10 px-3 py-2 text-sm dark:border-white/15"
                 rows={2}
               />
+              <label className="sm:col-span-2">
+                <span className="mb-1 block text-sm font-medium">Visibility</span>
+                <select
+                  value={newAlbum.visibility}
+                  onChange={(e) =>
+                    setNewAlbum((s) => ({
+                      ...s,
+                      visibility: e.target.value as "all" | "restricted",
+                    }))
+                  }
+                  className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm dark:border-white/15"
+                >
+                  <option value="all">All family members</option>
+                  <option value="restricted">Restricted (selected members)</option>
+                </select>
+              </label>
+              {newAlbum.visibility === "restricted" ? (
+                <div className="sm:col-span-2 rounded-lg border border-black/10 p-3 dark:border-white/15">
+                  <p className="mb-2 text-xs font-medium text-[var(--muted)]">Allowed members</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {members.map((m) => (
+                      <label key={m.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={newAlbum.allowedUserIds.includes(m.id)}
+                          onChange={(e) =>
+                            setNewAlbum((s) => ({
+                              ...s,
+                              allowedUserIds: e.target.checked
+                                ? [...s.allowedUserIds, m.id]
+                                : s.allowedUserIds.filter((id) => id !== m.id),
+                            }))
+                          }
+                        />
+                        {m.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <button
                 type="submit"
                 className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white sm:col-span-2"
@@ -744,6 +805,7 @@ export default function AdminPage() {
                     {a.ownerUserId
                       ? ` · ${members.find((m) => m.id === a.ownerUserId)?.name ?? a.ownerUserId}`
                       : ""}
+                    {a.visibility === "restricted" ? " · Restricted" : " · All members"}
                   </p>
                   {a.description ? <p className="mt-1 text-sm">{a.description}</p> : null}
                 </div>
@@ -755,6 +817,8 @@ export default function AdminPage() {
                       setEditingAlbum(a);
                       setEditAlbumName(a.name);
                       setEditAlbumDescription(a.description);
+                      setEditAlbumVisibility(a.visibility ?? "all");
+                      setEditAlbumAllowedUserIds(a.allowedUserIds ?? []);
                     }}
                   >
                     Edit
@@ -787,6 +851,38 @@ export default function AdminPage() {
                   className="sm:col-span-2 rounded-lg border border-black/10 px-3 py-2 text-sm dark:border-white/15"
                   rows={2}
                 />
+                <label className="sm:col-span-2">
+                  <span className="mb-1 block text-sm font-medium">Visibility</span>
+                  <select
+                    value={editAlbumVisibility}
+                    onChange={(e) => setEditAlbumVisibility(e.target.value as "all" | "restricted")}
+                    className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm dark:border-white/15"
+                  >
+                    <option value="all">All family members</option>
+                    <option value="restricted">Restricted (selected members)</option>
+                  </select>
+                </label>
+                {editAlbumVisibility === "restricted" ? (
+                  <div className="sm:col-span-2 rounded-lg border border-black/10 p-3 dark:border-white/15">
+                    <p className="mb-2 text-xs font-medium text-[var(--muted)]">Allowed members</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {members.map((m) => (
+                        <label key={m.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={editAlbumAllowedUserIds.includes(m.id)}
+                            onChange={(e) =>
+                              setEditAlbumAllowedUserIds((prev) =>
+                                e.target.checked ? [...prev, m.id] : prev.filter((id) => id !== m.id)
+                              )
+                            }
+                          />
+                          {m.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="flex gap-2 sm:col-span-2">
                   <button
                     type="submit"

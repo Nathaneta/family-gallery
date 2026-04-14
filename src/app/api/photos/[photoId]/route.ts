@@ -9,6 +9,7 @@ import { User } from "@/models/User";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 import type { FamilyCategory } from "@/models/Photo";
 import { FAMILY_CATEGORIES } from "@/utils/constants";
+import { canAccessAlbum } from "@/lib/album-access";
 
 function isFamilyCategory(c: string): c is FamilyCategory {
   return (FAMILY_CATEGORIES as readonly string[]).includes(c);
@@ -73,6 +74,12 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ photoId: 
         { error: "That folder does not belong to this gallery." },
         { status: 400 }
       );
+    }
+    if (nextAlbum) {
+      const album = await Album.findById(nextAlbum).lean();
+      if (album && !canAccessAlbum(album, session.sub)) {
+        return NextResponse.json({ error: "You do not have access to that folder." }, { status: 403 });
+      }
     }
     photo.albumId = nextAlbum ? new mongoose.Types.ObjectId(nextAlbum) : null;
   }

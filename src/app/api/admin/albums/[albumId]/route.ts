@@ -12,6 +12,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ albumId: 
   const body = await req.json();
   const name = body.name !== undefined ? String(body.name).trim() : undefined;
   const description = body.description !== undefined ? String(body.description).trim() : undefined;
+  const visibility =
+    body.visibility !== undefined ? (body.visibility === "restricted" ? "restricted" : "all") : undefined;
+  const allowedUserIds =
+    body.allowedUserIds !== undefined
+      ? Array.isArray(body.allowedUserIds)
+        ? body.allowedUserIds.map((x: unknown) => String(x)).filter(Boolean)
+        : []
+      : undefined;
 
   await connectDB();
   const album = await Album.findById(albumId);
@@ -20,6 +28,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ albumId: 
   }
   if (name !== undefined) album.name = name;
   if (description !== undefined) album.description = description;
+  if (visibility !== undefined) album.visibility = visibility;
+  if (allowedUserIds !== undefined) album.allowedUserIds = allowedUserIds as never;
   await album.save();
 
   return NextResponse.json({
@@ -29,6 +39,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ albumId: 
       description: album.description,
       scope: album.scope,
       ownerUserId: album.ownerUserId ? album.ownerUserId.toString() : null,
+      visibility: album.visibility,
+      allowedUserIds: (album.allowedUserIds ?? []).map((x) => x.toString()),
     },
   });
 }

@@ -10,6 +10,8 @@ export interface IAlbum {
   scope: AlbumScope;
   /** When scope is personal, which member’s gallery this folder belongs to */
   ownerUserId: mongoose.Types.ObjectId | null;
+  visibility: "all" | "restricted";
+  allowedUserIds: mongoose.Types.ObjectId[];
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -21,6 +23,8 @@ const AlbumSchema = new Schema<IAlbum>(
     description: { type: String, default: "" },
     scope: { type: String, enum: ["family", "personal"], required: true },
     ownerUserId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    visibility: { type: String, enum: ["all", "restricted"], default: "all" },
+    allowedUserIds: [{ type: Schema.Types.ObjectId, ref: "User" }],
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }

@@ -16,6 +16,8 @@ export async function GET(req: NextRequest) {
       description: a.description,
       scope: a.scope,
       ownerUserId: a.ownerUserId ? a.ownerUserId.toString() : null,
+      visibility: a.visibility ?? "all",
+      allowedUserIds: (a.allowedUserIds ?? []).map((x) => x.toString()),
       createdBy: a.createdBy.toString(),
       createdAt: a.createdAt.toISOString(),
     })),
@@ -31,6 +33,10 @@ export async function POST(req: NextRequest) {
   const description = String(body.description ?? "").trim();
   const scope = String(body.scope ?? "") as "family" | "personal";
   const ownerUserId = body.ownerUserId ? String(body.ownerUserId) : null;
+  const visibility = body.visibility === "restricted" ? "restricted" : "all";
+  const allowedUserIds = Array.isArray(body.allowedUserIds)
+    ? body.allowedUserIds.map((x: unknown) => String(x)).filter(Boolean)
+    : [];
 
   if (!name || (scope !== "family" && scope !== "personal")) {
     return NextResponse.json({ error: "name and scope family|personal required" }, { status: 400 });
@@ -45,6 +51,8 @@ export async function POST(req: NextRequest) {
     description,
     scope,
     ownerUserId: scope === "personal" ? ownerUserId : null,
+    visibility,
+    allowedUserIds,
     createdBy: gate.ctx.session.sub,
   });
 
@@ -55,6 +63,8 @@ export async function POST(req: NextRequest) {
       description: doc.description,
       scope: doc.scope,
       ownerUserId: doc.ownerUserId ? doc.ownerUserId.toString() : null,
+      visibility: doc.visibility,
+      allowedUserIds: (doc.allowedUserIds ?? []).map((x) => x.toString()),
     },
   });
 }

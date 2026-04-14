@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
-import { COOKIE_NAME, hashPassword, signSessionToken } from "@/lib/auth";
+import { COOKIE_NAME, hashPassword, startUserSession } from "@/lib/auth";
 
 /**
  * Signup is gated by FAMILY_INVITE_CODE so the gallery stays private.
@@ -49,7 +49,12 @@ export async function POST(req: Request) {
       sortIndex: 99,
     });
 
-    const token = await signSessionToken({ sub: user._id.toString(), email: user.email });
+    const { token } = await startUserSession(
+      { id: user._id.toString(), email: user.email },
+      {
+        userAgent: req.headers.get("user-agent") ?? "",
+      }
+    );
     const res = NextResponse.json({
       user: {
         id: user._id.toString(),

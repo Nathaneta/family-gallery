@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import type { PhotoPublic } from "@/shared/api-types";
@@ -43,7 +43,7 @@ export function Lightbox({ photo, onClose, photos, onNavigate }: Props) {
   const hasPrev = canNav && index > 0;
   const hasNext = canNav && index < photos!.length - 1;
 
-  async function loadSocial() {
+  const loadSocial = useCallback(async () => {
     if (!photo) return;
     try {
       const [cRes, rRes] = await Promise.all([
@@ -60,7 +60,7 @@ export function Lightbox({ photo, onClose, photos, onNavigate }: Props) {
     } catch {
       /* ignore */
     }
-  }
+  }, [photo]);
 
   useEffect(() => {
     if (!photo) return;
@@ -99,7 +99,7 @@ export function Lightbox({ photo, onClose, photos, onNavigate }: Props) {
     loadSocial();
     const t = setInterval(loadSocial, 10000);
     return () => clearInterval(t);
-  }, [photo?.id]);
+  }, [photo, loadSocial]);
 
   if (!photo) return null;
 

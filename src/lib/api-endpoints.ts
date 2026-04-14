@@ -8,6 +8,7 @@ export const API_ROUTES = {
     login: "/api/auth/login",
     logout: "/api/auth/logout",
     signup: "/api/auth/signup",
+    sessions: "/api/auth/sessions",
   },
   users: "/api/users",
   user: (id: string) => `/api/users/${id}`,

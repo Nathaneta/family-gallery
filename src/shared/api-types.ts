@@ -34,4 +34,6 @@ export type AlbumPublic = {
   description: string;
   scope: "family" | "personal";
   ownerUserId: string | null;
+  visibility?: "all" | "restricted";
+  allowedUserIds?: string[];
 };
