@@ -13,13 +13,17 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  const dismiss = useCallback((id: number) => {
+    setToasts((t) => t.filter((x) => x.id !== id));
+  }, []);
+
   const notify = useCallback((message: string) => {
     const id = Date.now();
     setToasts((t) => [...t, { id, message }]);
     setTimeout(() => {
-      setToasts((t) => t.filter((x) => x.id !== id));
+      dismiss(id);
     }, 4200);
-  }, []);
+  }, [dismiss]);
 
   return (
     <ToastContext.Provider value={{ notify }}>
@@ -31,7 +35,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className="pointer-events-auto rounded-xl border border-[var(--ring)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] shadow-lg shadow-black/10 transition dark:shadow-black/40"
             role="status"
           >
-            {t.message}
+            <div className="flex items-start gap-3">
+              <p className="min-w-0 flex-1">{t.message}</p>
+              <button
+                type="button"
+                onClick={() => dismiss(t.id)}
+                className="rounded-md px-1 text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
+                aria-label="Dismiss notification"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         ))}
       </div>

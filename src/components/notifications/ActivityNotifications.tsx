@@ -25,6 +25,7 @@ export function ActivityNotifications() {
     }
   });
   const firstLoadRef = useRef(true);
+  const lastNotifiedRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -49,9 +50,17 @@ export function ActivityNotifications() {
           }
 
           if (!lastSeen) return;
-          const fresh = next.filter((x) => new Date(x.createdAt).getTime() > new Date(lastSeen).getTime());
+          const fresh = next.filter((x) => {
+            const created = new Date(x.createdAt).getTime();
+            const seenCutoff = new Date(lastSeen).getTime();
+            const notifiedCutoff = lastNotifiedRef.current
+              ? new Date(lastNotifiedRef.current).getTime()
+              : -Infinity;
+            return created > seenCutoff && created > notifiedCutoff;
+          });
           if (fresh.length > 0) {
             notify(fresh[0].message);
+            lastNotifiedRef.current = fresh[0].createdAt;
           }
         })
         .catch(() => {});
