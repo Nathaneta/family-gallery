@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { requireAdmin } from "@/lib/admin";
 import { hashPassword } from "@/lib/auth";
+import { writeAdminAudit } from "@/lib/admin-audit";
 
 export async function GET(req: NextRequest) {
   const gate = await requireAdmin(req);
@@ -18,6 +19,9 @@ export async function GET(req: NextRequest) {
       avatarUrl: u.avatarUrl,
       displayRole: u.displayRole ?? "",
       isAdmin: !!u.isAdmin,
+      chatMutedUntil: u.chatMutedUntil ? new Date(u.chatMutedUntil).toISOString() : null,
+      chatBannedAt: u.chatBannedAt ? new Date(u.chatBannedAt).toISOString() : null,
+      chatBanReason: u.chatBanReason ?? "",
       sortIndex: u.sortIndex ?? 99,
     })),
   });
@@ -58,6 +62,13 @@ export async function POST(req: NextRequest) {
     isAdmin,
     sortIndex: Number.isFinite(sortIndex) ? sortIndex : 99,
   });
+  await writeAdminAudit({
+    adminUserId: gate.ctx.session.sub,
+    action: "admin.user.create",
+    targetType: "user",
+    targetId: user._id.toString(),
+    details: `Created ${user.email}`,
+  });
 
   return NextResponse.json({
     user: {
@@ -67,6 +78,9 @@ export async function POST(req: NextRequest) {
       avatarUrl: user.avatarUrl,
       displayRole: user.displayRole,
       isAdmin: user.isAdmin,
+      chatMutedUntil: user.chatMutedUntil ? new Date(user.chatMutedUntil).toISOString() : null,
+      chatBannedAt: user.chatBannedAt ? new Date(user.chatBannedAt).toISOString() : null,
+      chatBanReason: user.chatBanReason ?? "",
       sortIndex: user.sortIndex,
     },
   });

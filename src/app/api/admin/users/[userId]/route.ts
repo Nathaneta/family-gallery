@@ -6,6 +6,7 @@ import { Album } from "@/models/Album";
 import { ChatMessage } from "@/models/ChatMessage";
 import { requireAdmin } from "@/lib/admin";
 import { hashPassword } from "@/lib/auth";
+import { writeAdminAudit } from "@/lib/admin-audit";
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ userId: string }> }) {
   const gate = await requireAdmin(req);
@@ -45,8 +46,33 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ userId: s
     }
     user.isAdmin = nextAdmin;
   }
+  if (body.chatMutedUntil !== undefined) {
+    const raw = String(body.chatMutedUntil ?? "").trim();
+    if (!raw) {
+      user.chatMutedUntil = null;
+    } else {
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) {
+        return NextResponse.json({ error: "Invalid mute date" }, { status: 400 });
+      }
+      user.chatMutedUntil = d;
+    }
+  }
+  if (body.chatBannedAt !== undefined) {
+    user.chatBannedAt = body.chatBannedAt ? new Date(String(body.chatBannedAt)) : null;
+  }
+  if (body.chatBanReason !== undefined) {
+    user.chatBanReason = String(body.chatBanReason ?? "").slice(0, 300).trim();
+  }
 
   await user.save();
+  await writeAdminAudit({
+    adminUserId: gate.ctx.session.sub,
+    action: "admin.user.patch",
+    targetType: "user",
+    targetId: user._id.toString(),
+    details: `Updated ${user.email}`,
+  });
   return NextResponse.json({
     user: {
       id: user._id.toString(),
@@ -55,6 +81,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ userId: s
       avatarUrl: user.avatarUrl,
       displayRole: user.displayRole,
       isAdmin: user.isAdmin,
+      chatMutedUntil: user.chatMutedUntil ? user.chatMutedUntil.toISOString() : null,
+      chatBannedAt: user.chatBannedAt ? user.chatBannedAt.toISOString() : null,
+      chatBanReason: user.chatBanReason ?? "",
       sortIndex: user.sortIndex,
     },
   });
@@ -82,5 +111,12 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ userId: 
     $or: [{ senderId: user._id }, { dmKey: { $regex: `(^|:)${uid}(:|$)` } }],
   });
   await User.deleteOne({ _id: user._id });
+  await writeAdminAudit({
+    adminUserId: gate.ctx.session.sub,
+    action: "admin.user.delete",
+    targetType: "user",
+    targetId: uid,
+    details: `Deleted ${user.email}`,
+  });
   return NextResponse.json({ ok: true });
 }

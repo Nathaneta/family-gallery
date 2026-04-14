@@ -185,6 +185,26 @@ export async function POST(req: NextRequest) {
   }
 
   const settings = await getOrCreateChatSettings();
+  const sender = await User.findById(session.sub)
+    .select("isAdmin chatMutedUntil chatBannedAt chatBanReason")
+    .lean();
+  if (!sender) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!sender.isAdmin) {
+    if (sender.chatBannedAt) {
+      return jsonError(
+        sender.chatBanReason ? `Chat access removed: ${sender.chatBanReason}` : "You are blocked from chat",
+        403
+      );
+    }
+    if (sender.chatMutedUntil && new Date(sender.chatMutedUntil).getTime() > Date.now()) {
+      return jsonError(
+        `You are muted until ${new Date(sender.chatMutedUntil).toLocaleString()}`,
+        403
+      );
+    }
+  }
 
   let attachmentUrl: string | null = null;
   let attachmentType: "image" | "file" | null = null;

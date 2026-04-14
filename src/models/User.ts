@@ -13,6 +13,9 @@ export interface IUser {
   /** Shown on cards, e.g. Father, Mother, Sister */
   displayRole: string;
   isAdmin: boolean;
+  chatMutedUntil: Date | null;
+  chatBannedAt: Date | null;
+  chatBanReason: string;
   /** Lower numbers appear first on the dashboard */
   sortIndex: number;
   createdAt: Date;
@@ -27,6 +30,9 @@ const UserSchema = new Schema<IUser>(
     avatarUrl: { type: String, required: true },
     displayRole: { type: String, default: "" },
     isAdmin: { type: Boolean, default: false },
+    chatMutedUntil: { type: Date, default: null },
+    chatBannedAt: { type: Date, default: null },
+    chatBanReason: { type: String, default: "" },
     sortIndex: { type: Number, default: 99 },
   },
   { timestamps: true }

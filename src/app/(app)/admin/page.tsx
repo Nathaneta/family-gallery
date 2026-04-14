@@ -19,6 +19,9 @@ type AdminUser = {
   avatarUrl: string;
   displayRole: string;
   isAdmin: boolean;
+  chatMutedUntil?: string | null;
+  chatBannedAt?: string | null;
+  chatBanReason?: string;
   sortIndex: number;
 };
 
@@ -65,6 +68,17 @@ export default function AdminPage() {
   const [members, setMembers] = useState<AdminUser[]>([]);
   const [albums, setAlbums] = useState<AdminAlbum[]>([]);
   const [media, setMedia] = useState<PhotoPublic[]>([]);
+  const [auditLogs, setAuditLogs] = useState<
+    {
+      id: string;
+      adminName: string;
+      action: string;
+      targetType: string;
+      targetId: string | null;
+      details: string;
+      createdAt: string;
+    }[]
+  >([]);
 
   const [newMember, setNewMember] = useState({
     name: "",
@@ -148,6 +162,13 @@ export default function AdminPage() {
       .catch(() => setStorageStatus(null));
   }, []);
 
+  const loadAuditLogs = useCallback(() => {
+    fetch(API_ROUTES.admin.audit, { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setAuditLogs(d.logs ?? []))
+      .catch(() => setAuditLogs([]));
+  }, []);
+
   useEffect(() => {
     if (loading) return;
     if (!user?.isAdmin) {
@@ -159,7 +180,8 @@ export default function AdminPage() {
     loadMedia();
     loadStats();
     loadStorageStatus();
-  }, [user, loading, router, loadMembers, loadAlbums, loadMedia, loadStats, loadStorageStatus]);
+    loadAuditLogs();
+  }, [user, loading, router, loadMembers, loadAlbums, loadMedia, loadStats, loadStorageStatus, loadAuditLogs]);
 
   useEffect(() => {
     if (tab === "chat") loadAdminChatSettings();
@@ -238,6 +260,26 @@ export default function AdminPage() {
     notify("Member removed.");
     loadMembers();
     loadMedia();
+  }
+
+  async function moderateChatMember(
+    id: string,
+    changes: { chatMutedUntil?: string | null; chatBannedAt?: string | null; chatBanReason?: string },
+    okMessage: string
+  ) {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(changes),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      notify(data.error || "Could not update chat moderation");
+      return;
+    }
+    notify(okMessage);
+    loadMembers();
   }
 
   async function createAlbum(e: React.FormEvent) {
@@ -510,6 +552,42 @@ export default function AdminPage() {
             </p>
           </section>
           <section className="rounded-2xl border border-amber-200/50 bg-[var(--card)] p-6 dark:border-amber-500/20">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold text-stone-900 dark:text-amber-50">Admin audit log</h2>
+              <button
+                type="button"
+                onClick={loadAuditLogs}
+                className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-medium dark:border-white/15"
+              >
+                Refresh
+              </button>
+            </div>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Recent admin actions (chat moderation, settings, member changes).
+            </p>
+            <ul className="mt-4 space-y-2">
+              {auditLogs.length === 0 ? (
+                <li className="text-sm text-[var(--muted)]">No recent audit records.</li>
+              ) : (
+                auditLogs.slice(0, 12).map((log) => (
+                  <li
+                    key={log.id}
+                    className="rounded-xl border border-black/10 p-3 text-sm dark:border-white/15"
+                  >
+                    <p className="font-medium">
+                      {log.adminName} · {log.action}
+                    </p>
+                    <p className="text-xs text-[var(--muted)]">
+                      {new Date(log.createdAt).toLocaleString()} · {log.targetType}
+                      {log.targetId ? ` (${log.targetId})` : ""}
+                    </p>
+                    {log.details ? <p className="mt-1 text-xs text-[var(--muted)]">{log.details}</p> : null}
+                  </li>
+                ))
+              )}
+            </ul>
+          </section>
+          <section className="rounded-2xl border border-amber-200/50 bg-[var(--card)] p-6 dark:border-amber-500/20">
             <h2 className="text-lg font-semibold text-stone-900 dark:text-amber-50">
               On this day (admin pin)
             </h2>
@@ -695,7 +773,7 @@ export default function AdminPage() {
                     <th className="p-3">Email</th>
                     <th className="p-3">Label</th>
                     <th className="p-3">Order</th>
-                    <th className="p-3">Admin</th>
+                    <th className="p-3">Admin / Chat</th>
                     <th className="p-3" />
                   </tr>
                 </thead>
@@ -722,7 +800,20 @@ export default function AdminPage() {
                       <td className="p-3 text-[var(--muted)]">{m.email}</td>
                       <td className="p-3">{m.displayRole}</td>
                       <td className="p-3">{m.sortIndex}</td>
-                      <td className="p-3">{m.isAdmin ? "Yes" : ""}</td>
+                      <td className="p-3">
+                        <div className="space-y-1 text-xs">
+                          <p>{m.isAdmin ? "Admin" : "Member"}</p>
+                          {m.chatBannedAt ? (
+                            <p className="text-rose-600 dark:text-rose-300">Banned</p>
+                          ) : m.chatMutedUntil && new Date(m.chatMutedUntil).getTime() > Date.now() ? (
+                            <p className="text-amber-600 dark:text-amber-300">
+                              Muted until {new Date(m.chatMutedUntil).toLocaleString()}
+                            </p>
+                          ) : (
+                            <p className="text-emerald-600 dark:text-emerald-300">Chat active</p>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-3 text-right">
                         <button
                           type="button"
@@ -741,6 +832,60 @@ export default function AdminPage() {
                         >
                           Delete
                         </button>
+                        <div className="mt-1 flex justify-end gap-2 text-xs">
+                          {m.chatBannedAt ? (
+                            <button
+                              type="button"
+                              className="text-emerald-700 dark:text-emerald-300"
+                              onClick={() =>
+                                moderateChatMember(
+                                  m.id,
+                                  { chatBannedAt: null, chatBanReason: "", chatMutedUntil: null },
+                                  "Chat ban removed."
+                                )
+                              }
+                            >
+                              Unban chat
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="text-rose-700 dark:text-rose-300"
+                              onClick={() => {
+                                const reason = window.prompt("Reason for chat ban (optional)")?.trim() ?? "";
+                                moderateChatMember(
+                                  m.id,
+                                  { chatBannedAt: new Date().toISOString(), chatBanReason: reason, chatMutedUntil: null },
+                                  "Member banned from chat."
+                                );
+                              }}
+                            >
+                              Ban chat
+                            </button>
+                          )}
+                          {m.chatMutedUntil && new Date(m.chatMutedUntil).getTime() > Date.now() ? (
+                            <button
+                              type="button"
+                              className="text-emerald-700 dark:text-emerald-300"
+                              onClick={() =>
+                                moderateChatMember(m.id, { chatMutedUntil: null }, "Chat mute removed.")
+                              }
+                            >
+                              Unmute
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="text-amber-700 dark:text-amber-300"
+                              onClick={() => {
+                                const until = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+                                moderateChatMember(m.id, { chatMutedUntil: until }, "Muted for 1 hour.");
+                              }}
+                            >
+                              Mute 1h
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

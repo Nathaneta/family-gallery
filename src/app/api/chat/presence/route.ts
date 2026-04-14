@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 import { ChatPresence } from "@/models/ChatPresence";
+import { User } from "@/models/User";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,13 @@ export async function POST(req: NextRequest) {
   const now = new Date();
 
   await connectDB();
+  const me = await User.findById(session.sub).select("isAdmin chatBannedAt").lean();
+  if (!me) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!me.isAdmin && me.chatBannedAt) {
+    return NextResponse.json({ error: "Blocked from chat" }, { status: 403, headers: NO_STORE });
+  }
 
   const set: Record<string, unknown> = { lastSeenAt: now };
   if (!heartbeat) {
