@@ -37,5 +37,6 @@ export const API_ROUTES = {
     media: "/api/admin/media",
     stats: "/api/admin/stats",
     chatSettings: "/api/admin/chat-settings",
+    storage: "/api/admin/storage",
   },
 } as const;

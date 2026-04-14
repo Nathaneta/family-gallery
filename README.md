@@ -28,6 +28,9 @@ REST handlers live under `src/app/api/*` (the Next.js convention for `/api`). Sh
    | `JWT_SECRET` | Long random string for signing session cookies |
    | `FAMILY_INVITE_CODE` | Optional; if set, signup requires this code (keeps the app private) |
    | `SEED_PASSWORD` | Optional; password for all seeded accounts (default: `family-gallery-demo`) |
+| `CLOUDINARY_CLOUD_NAME` | Optional; Cloudinary cloud name for production uploads |
+| `CLOUDINARY_API_KEY` | Optional; Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | Optional; Cloudinary API secret |
 
 3. **Seed the Getachew family (seven accounts + default shared folder)**
 
@@ -129,7 +132,8 @@ Copy `.env.example` to `.env.local` and set a non-empty `JWT_SECRET` (any long r
 ## Production notes
 
 - Set strong `JWT_SECRET` and `MONGODB_URI` in the host environment.
-- Uploaded files on disk do not persist on ephemeral hosts (e.g. Vercel). For production, move uploads to **S3**, **Cloudinary**, or similar and store the URL in MongoDB.
+- If `CLOUDINARY_*` is set, media/avatar uploads are stored in Cloudinary and the secure URL is saved in MongoDB.
+- Without Cloudinary, uploaded files on disk do not persist on ephemeral hosts (e.g. Vercel). For production, use **Cloudinary**, **S3**, or similar and store the URL in MongoDB.
 - Consider restricting CORS and serving the API only from your app origin when you add a separate mobile client.
 
 ## Scripts

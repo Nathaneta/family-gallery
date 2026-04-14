@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { requireAdmin } from "@/lib/admin";
+import { isCloudinaryEnabled, toDataUrl, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 const ALLOWED = new Map([
   ["image/jpeg", ".jpg"],
@@ -47,14 +48,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ userId: st
   const id = randomUUID();
   const filename = `${id}${ext}`;
   const dir = path.join(process.cwd(), "public", "uploads", "avatars");
-  let avatarUrl: string;
-  try {
-    await mkdir(dir, { recursive: true });
-    await writeFile(path.join(dir, filename), buf);
-    avatarUrl = `/uploads/avatars/${filename}`;
-  } catch {
-    // Vercel's filesystem is read-only at runtime; fall back to DB-stored data URL.
-    avatarUrl = `data:${mime};base64,${buf.toString("base64")}`;
+  let avatarUrl: string | null = null;
+  if (isCloudinaryEnabled()) {
+    avatarUrl = await uploadBufferToCloudinary(buf, mime, {
+      folder: "family-gallery/avatars",
+      resourceType: "image",
+      publicId: id,
+    });
+  }
+  if (!avatarUrl) {
+    try {
+      await mkdir(dir, { recursive: true });
+      await writeFile(path.join(dir, filename), buf);
+      avatarUrl = `/uploads/avatars/${filename}`;
+    } catch {
+      // Vercel's filesystem is read-only at runtime; fall back to DB-stored data URL.
+      avatarUrl = toDataUrl(mime, buf);
+    }
   }
 
   target.avatarUrl = avatarUrl;

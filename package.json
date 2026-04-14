@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.9.0",
     "jose": "^6.2.2",
     "mongoose": "^9.4.1",
     "next": "16.2.3",

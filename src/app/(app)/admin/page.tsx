@@ -49,6 +49,12 @@ export default function AdminPage() {
     messagesToday: number;
     adminCount: number;
   } | null>(null);
+  const [storageStatus, setStorageStatus] = useState<{
+    mode: "cloudinary" | "local-fallback";
+    cloudinaryEnabled: boolean;
+    cloudName: string | null;
+    notes: string;
+  } | null>(null);
 
   const [adminChat, setAdminChat] = useState<{
     familyChatEnabled: boolean;
@@ -135,6 +141,13 @@ export default function AdminPage() {
       .catch(() => setAdminChat(null));
   }, []);
 
+  const loadStorageStatus = useCallback(() => {
+    fetch(API_ROUTES.admin.storage, { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setStorageStatus(d.storage ?? null))
+      .catch(() => setStorageStatus(null));
+  }, []);
+
   useEffect(() => {
     if (loading) return;
     if (!user?.isAdmin) {
@@ -145,7 +158,8 @@ export default function AdminPage() {
     loadAlbums();
     loadMedia();
     loadStats();
-  }, [user, loading, router, loadMembers, loadAlbums, loadMedia, loadStats]);
+    loadStorageStatus();
+  }, [user, loading, router, loadMembers, loadAlbums, loadMedia, loadStats, loadStorageStatus]);
 
   useEffect(() => {
     if (tab === "chat") loadAdminChatSettings();
@@ -452,6 +466,48 @@ export default function AdminPage() {
             >
               Open /api/health
             </a>
+          </section>
+          <section className="rounded-2xl border border-amber-200/50 bg-[var(--card)] p-6 dark:border-amber-500/20">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-stone-900 dark:text-amber-50">Upload storage</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Shows where new uploads are being stored right now.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={loadStorageStatus}
+                className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-medium dark:border-white/15"
+              >
+                Refresh
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-black/10 p-3 dark:border-white/15">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Mode</p>
+                <p className="mt-1 text-sm font-medium">
+                  {storageStatus?.mode === "cloudinary" ? "Cloudinary" : "Local fallback"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-black/10 p-3 dark:border-white/15">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  Cloudinary
+                </p>
+                <p className="mt-1 text-sm font-medium">
+                  {storageStatus?.cloudinaryEnabled ? "Enabled" : "Not configured"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-black/10 p-3 dark:border-white/15">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  Cloud name
+                </p>
+                <p className="mt-1 text-sm font-medium">{storageStatus?.cloudName ?? "—"}</p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-[var(--muted)]">
+              {storageStatus?.notes ?? "Storage status unavailable. Click refresh."}
+            </p>
           </section>
           <section className="rounded-2xl border border-amber-200/50 bg-[var(--card)] p-6 dark:border-amber-500/20">
             <h2 className="text-lg font-semibold text-stone-900 dark:text-amber-50">

@@ -11,6 +11,7 @@ import type { FamilyCategory, MediaType } from "@/models/Photo";
 import { FAMILY_CATEGORIES } from "@/utils/constants";
 import { sendPushToAll } from "@/lib/web-push";
 import { canAccessAlbum } from "@/lib/album-access";
+import { isCloudinaryEnabled, toDataUrl, uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 type MimeRule = { mediaType: MediaType; ext: string; maxBytes: number };
 
@@ -269,24 +270,34 @@ export async function POST(req: NextRequest) {
   const id = randomUUID();
   const filename = `${id}${rule.ext}`;
   const uploadDir = path.join(process.cwd(), "public", "uploads", "media");
-  let publicPath: string;
-  try {
-    await mkdir(uploadDir, { recursive: true });
-    const fsPath = path.join(uploadDir, filename);
-    await writeFile(fsPath, buf);
-    publicPath = `/uploads/media/${filename}`;
-  } catch {
-    // Vercel runtime file system is read-only; keep smaller assets inline in MongoDB.
-    if (buf.length > MAX_INLINE_BYTES) {
-      return NextResponse.json(
-        {
-          error:
-            "Upload failed on this deployment for larger files. Please upload up to 4 MB or configure cloud storage (S3/Cloudinary).",
-        },
-        { status: 413 }
-      );
+  let publicPath: string | null = null;
+  if (isCloudinaryEnabled()) {
+    const resourceType = rule.mediaType === "video" ? "video" : rule.mediaType === "file" ? "raw" : "image";
+    publicPath = await uploadBufferToCloudinary(buf, mime, {
+      folder: "family-gallery/media",
+      resourceType,
+      publicId: id,
+    });
+  }
+  if (!publicPath) {
+    try {
+      await mkdir(uploadDir, { recursive: true });
+      const fsPath = path.join(uploadDir, filename);
+      await writeFile(fsPath, buf);
+      publicPath = `/uploads/media/${filename}`;
+    } catch {
+      // Vercel runtime file system is read-only; keep smaller assets inline in MongoDB.
+      if (buf.length > MAX_INLINE_BYTES) {
+        return NextResponse.json(
+          {
+            error:
+              "Upload failed on this deployment for larger files. Please upload up to 4 MB or configure Cloudinary storage.",
+          },
+          { status: 413 }
+        );
+      }
+      publicPath = toDataUrl(mime, buf);
     }
-    publicPath = `data:${mime};base64,${buf.toString("base64")}`;
   }
   const origName =
     typeof (file as File).name === "string" ? String((file as File).name).slice(0, 500) : "";
