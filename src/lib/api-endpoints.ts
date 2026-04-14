@@ -28,6 +28,9 @@ export const API_ROUTES = {
     publicKey: "/api/notifications/public-key",
     subscribe: "/api/notifications/subscribe",
   },
+  storage: {
+    status: "/api/storage/status",
+  },
   admin: {
     users: "/api/admin/users",
     user: (id: string) => `/api/admin/users/${id}`,

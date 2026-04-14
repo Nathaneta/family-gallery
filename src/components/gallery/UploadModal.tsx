@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { FAMILY_CATEGORIES } from "@/utils/constants";
 import { useToast } from "@/components/providers/ToastProvider";
 import type { AlbumPublic } from "@/shared/api-types";
+import { API_ROUTES } from "@/lib/api-endpoints";
 
 type GalleryMode = "personal" | "family";
 
@@ -34,6 +35,7 @@ export function UploadModal({
   const [albums, setAlbums] = useState<AlbumPublic[]>([]);
   const [busy, setBusy] = useState(false);
   const [personalTargetId, setPersonalTargetId] = useState(ownerUserId);
+  const [storageMode, setStorageMode] = useState<"cloudinary" | "local-fallback" | null>(null);
 
   const showMemberPicker = !!memberPicker?.length;
 
@@ -57,6 +59,14 @@ export function UploadModal({
       .then((d) => setAlbums(d.albums ?? []))
       .catch(() => setAlbums([]));
   }, [open, mode, effectivePersonalOwner]);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch(API_ROUTES.storage.status, { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setStorageMode(d.storage?.mode ?? null))
+      .catch(() => setStorageMode(null));
+  }, [open]);
 
   if (!open) return null;
 
@@ -128,6 +138,11 @@ export function UploadModal({
         <p className="mb-2 text-xs text-[var(--muted)]">
           Images, MP4/WebM/MOV videos, or PDF files (size limits apply).
         </p>
+        {storageMode === "local-fallback" ? (
+          <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
+            Cloud storage is not active. Large uploads can fail on this deployment.
+          </div>
+        ) : null}
         <label className="mb-3 block text-sm font-medium">File</label>
         <input
           ref={inputRef}
