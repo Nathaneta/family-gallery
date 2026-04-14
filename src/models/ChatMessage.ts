@@ -9,6 +9,12 @@ export interface IChatMessage {
   dmKey: string | null;
   senderId: mongoose.Types.ObjectId;
   body: string;
+  attachmentUrl: string | null;
+  attachmentType: "image" | "file" | null;
+  attachmentName: string | null;
+  attachmentMimeType: string | null;
+  seenBy: mongoose.Types.ObjectId[];
+  editedAt: Date | null;
   createdAt: Date;
 }
 
@@ -18,6 +24,12 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     dmKey: { type: String, default: null, index: true },
     senderId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     body: { type: String, required: true, trim: true, maxlength: 4000 },
+    attachmentUrl: { type: String, default: null },
+    attachmentType: { type: String, enum: ["image", "file", null], default: null },
+    attachmentName: { type: String, default: null },
+    attachmentMimeType: { type: String, default: null },
+    seenBy: [{ type: Schema.Types.ObjectId, ref: "User", index: true }],
+    editedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

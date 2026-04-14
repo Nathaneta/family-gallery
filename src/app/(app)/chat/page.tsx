@@ -13,6 +13,12 @@ type ChatMsg = {
   senderId: string;
   senderName: string;
   body: string;
+  attachmentUrl?: string | null;
+  attachmentType?: "image" | "file" | null;
+  attachmentName?: string | null;
+  attachmentMimeType?: string | null;
+  seenBy?: string[];
+  editedAt?: string | null;
   createdAt: string;
 };
 
@@ -36,6 +42,8 @@ export default function ChatPage() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [membersLoading, setMembersLoading] = useState(true);
+  const [pickedFileName, setPickedFileName] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingSentRef = useRef(false);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -180,29 +188,47 @@ export default function ChatPage() {
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !draft.trim() || sending) return;
+      const file = fileRef.current?.files?.[0] ?? null;
+    if (!user || (!draft.trim() && !file) || sending) return;
     if (channel === "dm" && !peerId) return;
     if (channel === "family" && !settings?.familyChatEnabled) return;
     if (channel === "dm" && !settings?.directMessagesEnabled) return;
 
     setSending(true);
     try {
-      const body =
-        channel === "family"
-          ? { channel: "family", body: draft.trim() }
-          : { channel: "dm", peerUserId: peerId, body: draft.trim() };
-      const res = await fetch(API_ROUTES.chat.messages, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: JSON.stringify(body),
-      });
+      let res: Response;
+      if (file) {
+        const fd = new FormData();
+        fd.append("channel", channel);
+        fd.append("body", draft.trim());
+        fd.append("file", file);
+        if (channel === "dm") fd.append("peerUserId", peerId);
+        res = await fetch(API_ROUTES.chat.messages, {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          body: fd,
+        });
+      } else {
+        const body =
+          channel === "family"
+            ? { channel: "family", body: draft.trim() }
+            : { channel: "dm", peerUserId: peerId, body: draft.trim() };
+        res = await fetch(API_ROUTES.chat.messages, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          cache: "no-store",
+          body: JSON.stringify(body),
+        });
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Could not send");
       }
       setDraft("");
+      if (fileRef.current) fileRef.current.value = "";
+      setPickedFileName("");
       typingSentRef.current = false;
       if (typingTimerRef.current) {
         clearTimeout(typingTimerRef.current);
@@ -216,6 +242,47 @@ export default function ChatPage() {
     } finally {
       setSending(false);
     }
+  }
+
+  async function editMessage(msg: ChatMsg) {
+    const next = window.prompt("Edit your message", msg.body);
+    if (next === null) return;
+    const body = next.trim();
+    if (!body) {
+      notify("Message cannot be empty.");
+      return;
+    }
+    if (body === msg.body) return;
+    const res = await fetch(API_ROUTES.chat.messages, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      cache: "no-store",
+      body: JSON.stringify({ id: msg.id, body }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      notify(data.error || "Could not edit message");
+      return;
+    }
+    loadMessages();
+  }
+
+  async function deleteMessage(msg: ChatMsg) {
+    if (!window.confirm("Delete this message?")) return;
+    const res = await fetch(API_ROUTES.chat.messages, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      cache: "no-store",
+      body: JSON.stringify({ id: msg.id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      notify(data.error || "Could not delete message");
+      return;
+    }
+    loadMessages();
   }
 
   const others = members.filter((m) => m.id !== user?.id);
@@ -370,12 +437,59 @@ export default function ChatPage() {
                         {msg.senderName}
                       </p>
                     ) : null}
-                    <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                    {msg.body ? <p className="whitespace-pre-wrap break-words">{msg.body}</p> : null}
+                    {msg.attachmentUrl ? (
+                      msg.attachmentType === "image" ? (
+                        <a href={msg.attachmentUrl} target="_blank" rel="noreferrer" className="mt-2 block">
+                          <Image
+                            src={msg.attachmentUrl}
+                            alt={msg.attachmentName || "Attachment"}
+                            width={280}
+                            height={220}
+                            className="max-h-56 w-auto rounded-lg object-cover"
+                            unoptimized={
+                              msg.attachmentUrl.startsWith("http") ||
+                              msg.attachmentUrl.startsWith("/uploads") ||
+                              msg.attachmentUrl.startsWith("data:")
+                            }
+                          />
+                        </a>
+                      ) : (
+                        <a
+                          href={msg.attachmentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex items-center rounded-md border border-current/30 px-2 py-1 text-xs underline"
+                        >
+                          📎 {msg.attachmentName || "Attachment"}
+                        </a>
+                      )
+                    ) : null}
                     <p
                       className={`mt-1 text-[10px] ${mine ? "text-white/75 dark:text-stone-900/60" : "text-[var(--muted)]"}`}
                     >
                       {new Date(msg.createdAt).toLocaleString()}
+                      {msg.editedAt ? " · edited" : ""}
+                      {channel === "dm" && mine && peerId && msg.seenBy?.includes(peerId) ? " · Seen" : ""}
                     </p>
+                    {mine ? (
+                      <div className="mt-1 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => editMessage(msg)}
+                          className={`text-[10px] underline ${mine ? "text-white/80 dark:text-stone-900/70" : "text-[var(--muted)]"}`}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteMessage(msg)}
+                          className={`text-[10px] underline ${mine ? "text-white/80 dark:text-stone-900/70" : "text-[var(--muted)]"}`}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -388,6 +502,16 @@ export default function ChatPage() {
           onSubmit={send}
           className="border-t border-black/5 p-3 dark:border-white/10"
         >
+          <div className="mb-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,.pdf,application/pdf"
+              onChange={(e) => setPickedFileName(e.target.files?.[0]?.name ?? "")}
+              className="w-full text-xs text-[var(--muted)]"
+            />
+            {pickedFileName ? <p className="mt-1 text-xs text-[var(--muted)]">Selected: {pickedFileName}</p> : null}
+          </div>
           <div className="flex gap-2">
             <input
               value={draft}
@@ -422,7 +546,7 @@ export default function ChatPage() {
               type="submit"
               disabled={
                 sending ||
-                !draft.trim() ||
+                (!draft.trim() && !pickedFileName) ||
                 (channel === "family" && !canFamily) ||
                 (channel === "dm" && (!peerId || !canDm))
               }
