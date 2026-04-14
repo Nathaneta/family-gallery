@@ -90,6 +90,9 @@ function ProfileBody({ userId }: { userId: string }) {
     if (profile?.avatarUrl) setAvatarUrlDraft(profile.avatarUrl);
   }, [profile?.avatarUrl]);
 
+  const isSelf = current?.id === userId;
+  const canEditAvatar = !!current && (isSelf || !!current.isAdmin);
+
   useEffect(() => {
     if (!isSelf) return;
     fetch("/api/auth/sessions", { credentials: "include", cache: "no-store" })
@@ -97,9 +100,6 @@ function ProfileBody({ userId }: { userId: string }) {
       .then((d) => setSessions(d.sessions ?? []))
       .catch(() => setSessions([]));
   }, [isSelf]);
-
-  const isSelf = current?.id === userId;
-  const canEditAvatar = !!current && (isSelf || !!current.isAdmin);
 
   if (profileLoading) {
     return <p className="text-[var(--muted)]">Loading profile…</p>;

@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ albumId: 
       scope: album.scope,
       ownerUserId: album.ownerUserId ? album.ownerUserId.toString() : null,
       visibility: album.visibility,
-      allowedUserIds: (album.allowedUserIds ?? []).map((x) => x.toString()),
+      allowedUserIds: (album.allowedUserIds ?? []).map((x: { toString: () => string }) => x.toString()),
     },
   });
 }

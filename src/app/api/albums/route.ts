@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         scope: a.scope,
         ownerUserId: a.ownerUserId ? a.ownerUserId.toString() : null,
         visibility: a.visibility ?? "all",
-        allowedUserIds: (a.allowedUserIds ?? []).map((x) => x.toString()),
+        allowedUserIds: (a.allowedUserIds ?? []).map((x: { toString: () => string }) => x.toString()),
       })),
     });
   }
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
         scope: a.scope,
         ownerUserId: a.ownerUserId ? a.ownerUserId.toString() : null,
         visibility: a.visibility ?? "all",
-        allowedUserIds: (a.allowedUserIds ?? []).map((x) => x.toString()),
+        allowedUserIds: (a.allowedUserIds ?? []).map((x: { toString: () => string }) => x.toString()),
       })),
     });
   }

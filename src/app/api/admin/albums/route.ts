@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       scope: a.scope,
       ownerUserId: a.ownerUserId ? a.ownerUserId.toString() : null,
       visibility: a.visibility ?? "all",
-      allowedUserIds: (a.allowedUserIds ?? []).map((x) => x.toString()),
+      allowedUserIds: (a.allowedUserIds ?? []).map((x: { toString: () => string }) => x.toString()),
       createdBy: a.createdBy.toString(),
       createdAt: a.createdAt.toISOString(),
     })),
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       scope: doc.scope,
       ownerUserId: doc.ownerUserId ? doc.ownerUserId.toString() : null,
       visibility: doc.visibility,
-      allowedUserIds: (doc.allowedUserIds ?? []).map((x) => x.toString()),
+      allowedUserIds: (doc.allowedUserIds ?? []).map((x: { toString: () => string }) => x.toString()),
     },
   });
 }
