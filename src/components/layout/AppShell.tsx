@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { ActivityNotifications } from "@/components/notifications/ActivityNotifications";
+import { PwaInstallPrompt } from "@/components/providers/PwaInstallPrompt";
 
 function navLinks(isAdmin: boolean) {
   const base = [
@@ -100,6 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
           <div className="flex items-center gap-2">
+            <PwaInstallPrompt />
             {user ? <ActivityNotifications /> : null}
             <button
               type="button"
