@@ -3,6 +3,10 @@ import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
+const PRIVATE_CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=30, stale-while-revalidate=120",
+} as const;
+
 /** All family members (for dashboard cards). Requires login. */
 export async function GET(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
@@ -16,13 +20,16 @@ export async function GET(req: NextRequest) {
     .select("name email avatarUrl displayRole sortIndex")
     .sort({ sortIndex: 1, name: 1 })
     .lean();
-  return NextResponse.json({
-    users: users.map((u) => ({
-      id: u._id.toString(),
-      name: u.name,
-      email: u.email,
-      avatarUrl: u.avatarUrl,
-      displayRole: u.displayRole ?? "",
-    })),
-  });
+  return NextResponse.json(
+    {
+      users: users.map((u) => ({
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        avatarUrl: u.avatarUrl,
+        displayRole: u.displayRole ?? "",
+      })),
+    },
+    { headers: PRIVATE_CACHE_HEADERS }
+  );
 }

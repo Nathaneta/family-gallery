@@ -7,10 +7,24 @@ import { UploadModal } from "@/components/gallery/UploadModal";
 import { useAuth } from "@/components/providers/AuthProvider";
 import type { UserPublic } from "@/shared/api-types";
 
+const MEMBERS_CACHE_KEY = "family-gallery-dashboard-members-v1";
+
+function readCachedMembers(): UserPublic[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(MEMBERS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as UserPublic[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [members, setMembers] = useState<UserPublic[]>([]);
-  const [membersLoading, setMembersLoading] = useState(true);
+  const [members, setMembers] = useState<UserPublic[]>(() => readCachedMembers());
+  const [membersLoading, setMembersLoading] = useState(() => readCachedMembers().length === 0);
   const [uploadOpen, setUploadOpen] = useState(false);
 
   const load = useCallback((showLoading = true) => {
@@ -25,7 +39,15 @@ export default function DashboardPage() {
   useEffect(() => {
     fetch("/api/users", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => setMembers(d.users ?? []))
+      .then((d) => {
+        const list = d.users ?? [];
+        setMembers(list);
+        try {
+          window.localStorage.setItem(MEMBERS_CACHE_KEY, JSON.stringify(list));
+        } catch {
+          // ignore cache write issues
+        }
+      })
       .catch(() => setMembers([]))
       .finally(() => setMembersLoading(false));
   }, []);

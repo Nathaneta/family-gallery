@@ -12,13 +12,35 @@ type SpotlightPhoto = {
   createdAt: string;
 };
 
+const SPOTLIGHT_CACHE_KEY = "family-gallery-spotlight-v1";
+
+function readCachedSpotlight(): SpotlightPhoto | null | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(SPOTLIGHT_CACHE_KEY);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as SpotlightPhoto | null;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return undefined;
+  }
+}
+
 export function FamilySpotlight() {
-  const [photo, setPhoto] = useState<SpotlightPhoto | null | undefined>(undefined);
+  const [photo, setPhoto] = useState<SpotlightPhoto | null | undefined>(() => readCachedSpotlight());
 
   useEffect(() => {
     fetch(API_ROUTES.photosSpotlight, { credentials: "include" })
       .then((r) => r.json())
-      .then((d) => setPhoto(d.photo ?? null))
+      .then((d) => {
+        const next = d.photo ?? null;
+        setPhoto(next);
+        try {
+          window.localStorage.setItem(SPOTLIGHT_CACHE_KEY, JSON.stringify(next));
+        } catch {
+          // ignore cache write issues
+        }
+      })
       .catch(() => setPhoto(null));
   }, []);
 

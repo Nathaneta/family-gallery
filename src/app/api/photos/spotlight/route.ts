@@ -3,6 +3,10 @@ import { connectDB } from "@/lib/mongodb";
 import { Photo } from "@/models/Photo";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
+const PRIVATE_CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=30, stale-while-revalidate=120",
+} as const;
+
 /** One random image from the family gallery — “spotlight” on the dashboard. */
 export async function GET(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
@@ -19,15 +23,18 @@ export async function GET(req: NextRequest) {
   ]);
 
   if (!doc) {
-    return NextResponse.json({ photo: null });
+    return NextResponse.json({ photo: null }, { headers: PRIVATE_CACHE_HEADERS });
   }
 
-  return NextResponse.json({
-    photo: {
-      publicPath: doc.publicPath,
-      caption: doc.caption ?? "",
-      category: doc.category ?? "",
-      createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : doc.createdAt,
+  return NextResponse.json(
+    {
+      photo: {
+        publicPath: doc.publicPath,
+        caption: doc.caption ?? "",
+        category: doc.category ?? "",
+        createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : doc.createdAt,
+      },
     },
-  });
+    { headers: PRIVATE_CACHE_HEADERS }
+  );
 }
