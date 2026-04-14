@@ -30,7 +30,7 @@ export function PhotoGrid({ photos, onSelect }: Props) {
           <button
             type="button"
             onClick={() => onSelect(p)}
-            className="group relative aspect-square w-full overflow-hidden rounded-xl border border-black/5 bg-black/5 shadow-sm transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] hover:shadow-md dark:border-white/10"
+            className="group relative aspect-square min-h-[148px] w-full overflow-hidden rounded-xl border border-black/5 bg-black/5 shadow-sm transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] active:scale-[0.99] hover:shadow-md dark:border-white/10"
           >
             {p.mediaType === "video" ? (
               <video

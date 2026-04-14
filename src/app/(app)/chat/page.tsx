@@ -43,6 +43,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [membersLoading, setMembersLoading] = useState(true);
   const [pickedFileName, setPickedFileName] = useState("");
+  const [showAttachPicker, setShowAttachPicker] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingSentRef = useRef(false);
@@ -229,6 +230,7 @@ export default function ChatPage() {
       setDraft("");
       if (fileRef.current) fileRef.current.value = "";
       setPickedFileName("");
+      setShowAttachPicker(false);
       typingSentRef.current = false;
       if (typingTimerRef.current) {
         clearTimeout(typingTimerRef.current);
@@ -498,21 +500,30 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
 
-        <form
-          onSubmit={send}
-          className="border-t border-black/5 p-3 dark:border-white/10"
-        >
-          <div className="mb-2">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*,.pdf,application/pdf"
-              onChange={(e) => setPickedFileName(e.target.files?.[0]?.name ?? "")}
-              className="w-full text-xs text-[var(--muted)]"
-            />
-            {pickedFileName ? <p className="mt-1 text-xs text-[var(--muted)]">Selected: {pickedFileName}</p> : null}
-          </div>
+        <form onSubmit={send} className="border-t border-black/5 p-3 dark:border-white/10">
+          {showAttachPicker ? (
+            <div className="mb-2 rounded-lg border border-black/10 p-2 dark:border-white/15">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*,.pdf,application/pdf"
+                onChange={(e) => setPickedFileName(e.target.files?.[0]?.name ?? "")}
+                className="w-full text-xs text-[var(--muted)]"
+              />
+              {pickedFileName ? (
+                <p className="mt-1 text-xs text-[var(--muted)]">Selected: {pickedFileName}</p>
+              ) : null}
+            </div>
+          ) : null}
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAttachPicker((v) => !v)}
+              className="rounded-xl border border-black/10 px-3 py-2 text-sm dark:border-white/15"
+              aria-label="Toggle attachment picker"
+            >
+              📎
+            </button>
             <input
               value={draft}
               onChange={(e) => {
@@ -540,7 +551,7 @@ export default function ChatPage() {
                 (channel === "family" && !canFamily) ||
                 (channel === "dm" && (!peerId || !canDm))
               }
-              className="min-w-0 flex-1 rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/15"
+              className="min-w-0 flex-1 rounded-xl border border-black/10 bg-transparent px-3 py-3 text-base dark:border-white/15"
             />
             <button
               type="submit"
@@ -550,7 +561,7 @@ export default function ChatPage() {
                 (channel === "family" && !canFamily) ||
                 (channel === "dm" && (!peerId || !canDm))
               }
-              className="shrink-0 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50 dark:bg-cyan-500 dark:text-stone-950"
+              className="shrink-0 rounded-xl bg-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:opacity-50 dark:bg-cyan-500 dark:text-stone-950"
             >
               Send
             </button>

@@ -19,7 +19,7 @@ export function MemberCard({ member }: { member: UserPublic }) {
   return (
     <Link
       href={`/profile/${member.id}`}
-      className="group relative overflow-hidden rounded-2xl border border-black/5 bg-[var(--card)] p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10"
+      className="group relative min-h-[176px] overflow-hidden rounded-2xl border border-black/5 bg-[var(--card)] p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg active:scale-[0.99] dark:border-white/10"
     >
       <div
         className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r opacity-90 ${bar}`}
