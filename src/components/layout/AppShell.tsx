@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -52,10 +53,22 @@ function NavLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+function navIcon(href: string) {
+  if (href === "/dashboard") return "🏠";
+  if (href === "/family") return "🖼️";
+  if (href === "/timeline") return "🗓️";
+  if (href === "/chat") return "💬";
+  if (href === "/admin") return "🛡️";
+  return "•";
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const pathname = usePathname();
+  const [mobileHintHidden, setMobileHintHidden] = useState(() =>
+    typeof window === "undefined" ? false : window.localStorage.getItem("fg-mobile-hint-hidden") === "1"
+  );
   const nav = navLinks(!!user?.isAdmin);
   const onAdminRoute = pathname.startsWith("/admin");
 
@@ -144,11 +157,55 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main
-        className={`mx-auto max-w-6xl px-4 py-8 pb-16 ${sectionClass}`}
+        className={`mx-auto max-w-6xl px-4 py-8 pb-24 sm:pb-16 ${sectionClass}`}
         data-section={sectionClass.replace("section-", "")}
       >
+        {!mobileHintHidden ? (
+          <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3 text-xs text-indigo-100 sm:hidden">
+            <p>
+              Mobile tip: use the bottom nav for quick sections, and install the app for best experience.
+            </p>
+            <button
+              type="button"
+              className="mt-2 rounded-md border border-indigo-300/40 px-2 py-1 text-[11px]"
+              onClick={() => {
+                window.localStorage.setItem("fg-mobile-hint-hidden", "1");
+                setMobileHintHidden(true);
+              }}
+            >
+              Hide tip
+            </button>
+          </div>
+        ) : null}
         {children}
       </main>
+
+      {user ? (
+        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-[var(--card)]/95 px-2 py-2 backdrop-blur-md sm:hidden dark:border-white/15">
+          <ul className="flex items-center justify-around gap-1">
+            {nav.map((n) => {
+              const active = pathname === n.href || pathname.startsWith(n.href + "/");
+              return (
+                <li key={n.href} className="min-w-0 flex-1">
+                  <Link
+                    href={n.href}
+                    className={`flex flex-col items-center rounded-xl px-2 py-1.5 text-[11px] ${
+                      active
+                        ? "bg-[var(--accent)]/15 font-semibold text-[var(--foreground)]"
+                        : "text-[var(--muted)]"
+                    }`}
+                  >
+                    <span aria-hidden className="text-base leading-none">
+                      {navIcon(n.href)}
+                    </span>
+                    <span className="truncate">{n.label.replace(" gallery", "")}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      ) : null}
     </div>
   );
 }
