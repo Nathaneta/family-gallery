@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const [members, setMembers] = useState<UserPublic[]>(() => readCachedMembers());
   const [membersLoading, setMembersLoading] = useState(() => readCachedMembers().length === 0);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [showSpotlight, setShowSpotlight] = useState(false);
 
   const load = useCallback((showLoading = true) => {
     if (showLoading) setMembersLoading(true);
@@ -50,6 +51,11 @@ export default function DashboardPage() {
       })
       .catch(() => setMembers([]))
       .finally(() => setMembersLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setShowSpotlight(true), 150);
+    return () => window.clearTimeout(id);
   }, []);
 
   const firstName = user?.name?.split(/\s+/)[0] ?? "";
@@ -87,8 +93,6 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <FamilySpotlight />
-
       <h2 className="mb-4 text-lg font-semibold">Family members</h2>
       <div className="member-grid grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {membersLoading
@@ -100,6 +104,8 @@ export default function DashboardPage() {
             ))
           : members.map((m) => <MemberCard key={m.id} member={m} />)}
       </div>
+
+      {showSpotlight ? <FamilySpotlight /> : null}
 
       {user && (
         <UploadModal
