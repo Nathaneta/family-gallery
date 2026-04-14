@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     storage: {
       mode: cloudinaryEnabled ? "cloudinary" : "local-fallback",
       cloudinaryEnabled,
+      maxRecommendedBytes: cloudinaryEnabled ? null : 4 * 1024 * 1024,
       notes: cloudinaryEnabled
         ? "Uploads use Cloudinary."
         : "Cloudinary is not configured. Large files may fail on some deployments.",

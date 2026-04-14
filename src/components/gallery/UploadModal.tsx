@@ -36,6 +36,7 @@ export function UploadModal({
   const [busy, setBusy] = useState(false);
   const [personalTargetId, setPersonalTargetId] = useState(ownerUserId);
   const [storageMode, setStorageMode] = useState<"cloudinary" | "local-fallback" | null>(null);
+  const [maxRecommendedBytes, setMaxRecommendedBytes] = useState<number | null>(null);
 
   const showMemberPicker = !!memberPicker?.length;
 
@@ -64,8 +65,16 @@ export function UploadModal({
     if (!open) return;
     fetch(API_ROUTES.storage.status, { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => setStorageMode(d.storage?.mode ?? null))
-      .catch(() => setStorageMode(null));
+      .then((d) => {
+        setStorageMode(d.storage?.mode ?? null);
+        setMaxRecommendedBytes(
+          typeof d.storage?.maxRecommendedBytes === "number" ? d.storage.maxRecommendedBytes : null
+        );
+      })
+      .catch(() => {
+        setStorageMode(null);
+        setMaxRecommendedBytes(null);
+      });
   }, [open]);
 
   if (!open) return null;
@@ -141,6 +150,9 @@ export function UploadModal({
         {storageMode === "local-fallback" ? (
           <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
             Cloud storage is not active. Large uploads can fail on this deployment.
+            {typeof maxRecommendedBytes === "number"
+              ? ` Recommended max file size: ${Math.floor(maxRecommendedBytes / (1024 * 1024))} MB.`
+              : ""}
           </div>
         ) : null}
         <label className="mb-3 block text-sm font-medium">File</label>
