@@ -4,6 +4,9 @@ import { Photo } from "@/models/Photo";
 import { User } from "@/models/User";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+const NO_STORE = { "Cache-Control": "private, no-store, max-age=0, must-revalidate" } as const;
+
 /**
  * Recent uploads across the family — shown as lightweight "notifications" on the dashboard.
  */
@@ -15,7 +18,11 @@ export async function GET(req: NextRequest) {
   }
 
   await connectDB();
-  const recent = await Photo.find().sort({ createdAt: -1 }).limit(12).lean();
+  const recent = await Photo.find()
+    .select("uploadedBy galleryType mediaType publicPath createdAt")
+    .sort({ createdAt: -1 })
+    .limit(12)
+    .lean();
   const uploaderIds = [...new Set(recent.map((p) => p.uploadedBy.toString()))];
   const uploaders = await User.find({ _id: { $in: uploaderIds } }).select("name").lean();
   const nameById = new Map(uploaders.map((u) => [u._id.toString(), u.name]));
@@ -41,5 +48,5 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ items }, { headers: NO_STORE });
 }

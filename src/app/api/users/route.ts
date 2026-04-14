@@ -12,7 +12,10 @@ export async function GET(req: NextRequest) {
   }
 
   await connectDB();
-  const users = await User.find().sort({ sortIndex: 1, name: 1 }).lean();
+  const users = await User.find()
+    .select("name email avatarUrl displayRole sortIndex")
+    .sort({ sortIndex: 1, name: 1 })
+    .lean();
   return NextResponse.json({
     users: users.map((u) => ({
       id: u._id.toString(),
