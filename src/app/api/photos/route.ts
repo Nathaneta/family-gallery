@@ -9,6 +9,7 @@ import { User } from "@/models/User";
 import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 import type { FamilyCategory, MediaType } from "@/models/Photo";
 import { FAMILY_CATEGORIES } from "@/utils/constants";
+import { sendPushToAll } from "@/lib/web-push";
 
 type MimeRule = { mediaType: MediaType; ext: string; maxBytes: number };
 
@@ -247,6 +248,22 @@ export async function POST(req: NextRequest) {
     mimeType: mime,
     originalFilename: origName,
   });
+
+  const uploaderName = me?.name ?? "A family member";
+  const target =
+    galleryType === "family"
+      ? "family gallery"
+      : isAdmin && ownerUserId && ownerUserId !== session.sub
+        ? "a member gallery"
+        : "their gallery";
+  void sendPushToAll(
+    {
+      title: "New upload",
+      body: `${uploaderName} uploaded to ${target}`,
+      url: galleryType === "family" ? "/family" : `/profile/${ownerUserId ?? session.sub}`,
+    },
+    { excludeUserId: session.sub }
+  );
 
   return NextResponse.json({
     photo: {

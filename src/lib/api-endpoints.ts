@@ -23,6 +23,10 @@ export const API_ROUTES = {
     messages: "/api/chat/messages",
     presence: "/api/chat/presence",
   },
+  notifications: {
+    publicKey: "/api/notifications/public-key",
+    subscribe: "/api/notifications/subscribe",
+  },
   admin: {
     users: "/api/admin/users",
     user: (id: string) => `/api/admin/users/${id}`,

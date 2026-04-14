@@ -6,6 +6,7 @@ import { COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 import { getOrCreateChatSettings } from "@/models/ChatSettings";
 import { dmKeyFor } from "@/lib/dm-key";
 import { jsonError } from "@/lib/http";
+import { sendPushToAll, sendPushToUsers } from "@/lib/web-push";
 
 /** Per-user data; never cache (proxies/CDN/browser could serve one member's payload to others). */
 export const dynamic = "force-dynamic";
@@ -146,6 +147,14 @@ export async function POST(req: NextRequest) {
     });
     const u = await User.findById(session.sub).select("name").lean();
     const names = new Map([[session.sub, u?.name ?? "You"]]);
+    void sendPushToAll(
+      {
+        title: "Family chat",
+        body: `${u?.name ?? "A member"}: ${text.slice(0, 80)}`,
+        url: "/chat",
+      },
+      { excludeUserId: session.sub }
+    );
     return noStoreJson({
       message: mapMessage(doc.toObject(), names),
     });
@@ -173,6 +182,15 @@ export async function POST(req: NextRequest) {
     .select("name")
     .lean();
   const names = new Map(users.map((x) => [x._id.toString(), x.name]));
+  const senderName = names.get(session.sub) ?? "A member";
+  void sendPushToUsers(
+    {
+      title: "New direct message",
+      body: `${senderName}: ${text.slice(0, 80)}`,
+      url: "/chat",
+    },
+    [peerId]
+  );
   return noStoreJson({
     message: mapMessage(doc.toObject(), names),
   });
