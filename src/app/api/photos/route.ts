@@ -94,6 +94,10 @@ export async function GET(req: NextRequest) {
   const uploadedBy = searchParams.get("uploadedBy");
   const albumParam = searchParams.get("albumId");
   const q = searchParams.get("q")?.trim();
+  const mediaType = searchParams.get("mediaType");
+  const dateFrom = searchParams.get("dateFrom");
+  const dateTo = searchParams.get("dateTo");
+  const sort = searchParams.get("sort") === "oldest" ? "oldest" : "newest";
 
   await connectDB();
   const viewer = await User.findById(session.sub).select("isAdmin").lean();
@@ -125,11 +129,34 @@ export async function GET(req: NextRequest) {
       { originalFilename: { $regex: q, $options: "i" } },
     ];
   }
+  if (mediaType === "image" || mediaType === "video" || mediaType === "file") {
+    filter.mediaType = mediaType;
+  }
+  if (dateFrom || dateTo) {
+    const createdAt: Record<string, Date> = {};
+    if (dateFrom) {
+      const d = new Date(dateFrom);
+      if (!Number.isNaN(d.getTime())) createdAt.$gte = d;
+    }
+    if (dateTo) {
+      const d = new Date(dateTo);
+      if (!Number.isNaN(d.getTime())) {
+        d.setHours(23, 59, 59, 999);
+        createdAt.$lte = d;
+      }
+    }
+    if (Object.keys(createdAt).length > 0) {
+      filter.createdAt = createdAt;
+    }
+  }
   if (!isAdminViewer) {
     filter.hidden = { $ne: true };
   }
 
-  let photos = await Photo.find(filter).sort({ createdAt: -1 }).limit(200).lean();
+  let photos = await Photo.find(filter)
+    .sort({ createdAt: sort === "oldest" ? 1 : -1 })
+    .limit(300)
+    .lean();
   const albumIds = [...new Set(photos.map((p) => p.albumId?.toString()).filter(Boolean))] as string[];
   if (albumIds.length > 0) {
     const albumRows = await Album.find({ _id: { $in: albumIds } })

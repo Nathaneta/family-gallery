@@ -10,6 +10,7 @@ function navLinks(isAdmin: boolean) {
   const base = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/family", label: "Family gallery" },
+    { href: "/timeline", label: "Timeline" },
     { href: "/chat", label: "Chat" },
   ];
   if (isAdmin) {
