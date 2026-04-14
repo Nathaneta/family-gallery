@@ -18,11 +18,14 @@ export function PushNotificationsSetup() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!user) return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    if (!("serviceWorker" in navigator)) return;
 
     (async () => {
       try {
+        const reg = await navigator.serviceWorker.register("/sw.js");
+        if (!user) return;
+        if (!("PushManager" in window)) return;
+
         const keyRes = await fetch("/api/notifications/public-key", {
           credentials: "include",
           cache: "no-store",
@@ -33,7 +36,6 @@ export function PushNotificationsSetup() {
         const permission = await Notification.requestPermission();
         if (permission !== "granted") return;
 
-        const reg = await navigator.serviceWorker.register("/sw.js");
         let sub = await reg.pushManager.getSubscription();
         if (!sub) {
           sub = await reg.pushManager.subscribe({

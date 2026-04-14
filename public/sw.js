@@ -1,3 +1,26 @@
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open("family-gallery-v1").then((cache) => cache.addAll(["/offline.html", "/pwa-192.svg"]))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== "family-gallery-v1").map((k) => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.mode !== "navigate") return;
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match("/offline.html"))
+  );
+});
+
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   let data = {};

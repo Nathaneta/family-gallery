@@ -16,6 +16,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Family Gallery",
   description: "Private family photos, personal galleries, and shared albums.",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#4f46e5",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Family Gallery",
+  },
 };
 
 export default function RootLayout({
